@@ -1,0 +1,12 @@
+
+void main(){
+	
+	int c=8;
+	int i=2;
+	int b;
+	b=c/i;
+	printInt(b);
+	printString("\n");
+	return;
+}
+	

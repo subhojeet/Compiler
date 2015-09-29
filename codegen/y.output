@@ -1,0 +1,791 @@
+Terminals unused in grammar
+
+   PLUS
+   MINUS
+   TIMES
+   DIVIDE
+   SMALLER
+   SMALLEREQ
+   GREATER
+   GREATEREQ
+   EQEQ
+   PARAM
+   COMMA
+   PUSH
+
+
+Grammar
+
+    0 $accept: lines $end
+
+    1 lines: %empty
+    2      | lines line
+
+    3 line: binary
+    4     | unary
+    5     | copy
+    6     | conditional_jump
+    7     | unconditional_jump
+    8     | function_call
+    9     | indexed_copy
+   10     | address_pointer_assignment
+   11     | label1
+   12     | fun_begin
+   13     | para_num
+   14     | fun_end
+   15     | return_stmt
+   16     | pushargs
+
+   17 fun_begin: label FUNCBEGIN
+
+   18 fun_end: FUNCEND num
+
+   19 para_num: PARAMSNUM num
+
+   20 return_stmt: RETURN
+
+   21 binary: identifier EQ identifiernum binary_ops identifiernum
+
+   22 identifiernum: identifier
+   23              | num
+
+   24 binary_ops: BINARY_OPERATORS
+
+   25 identifier: ID
+
+   26 num: NUM
+
+   27 label: LABEL
+
+   28 unary: identifier EQ UNARY_OPS identifier
+
+   29 copy: identifier EQ identifier
+   30     | identifier EQ num
+
+   31 label1: label
+
+   32 conditional_jump: IF identifier GOTO label
+   33                 | IF num GOTO label
+
+   34 unconditional_jump: GOTO label
+
+   35 function_call: CALL identifier
+
+   36 pushargs: PUSHARGS identifier
+   37         | PUSHARGS num
+
+   38 indexed_copy: identifier EQ identifier LEFTSQPAR num RIGSQPAR
+   39             | identifier EQ identifier LEFTSQPAR identifier RIGSQPAR
+
+   40 address_pointer_assignment: STAR identifier EQ identifier
+   41                           | identifier EQ STAR identifier
+   42                           | identifier EQ ANDP identifier
+   43                           | ANDP identifier EQ identifier
+   44                           | STAR identifier EQ num
+
+
+Terminals, with rules where they appear
+
+$end (0) 0
+error (256)
+NUM (258) 26
+ID (259) 25
+EQ (260) 21 28 29 30 38 39 40 41 42 43 44
+FUNCBEGIN (261) 17
+FUNCEND (262) 18
+PARAMSNUM (263) 19
+RETURN (264) 20
+PUSHARGS (265) 36 37
+BINARY_OPERATORS (266) 24
+PLUS (267)
+MINUS (268)
+TIMES (269)
+DIVIDE (270)
+SMALLER (271)
+SMALLEREQ (272)
+GREATER (273)
+GREATEREQ (274)
+EQEQ (275)
+IF (276) 32 33
+GOTO (277) 32 33 34
+LABEL (278) 27
+PARAM (279)
+CALL (280) 35
+COMMA (281)
+LEFTSQPAR (282) 38 39
+RIGSQPAR (283) 38 39
+STAR (284) 40 41 44
+ANDP (285) 42 43
+UNARY_OPS (286) 28
+PUSH (287)
+
+
+Nonterminals, with rules where they appear
+
+$accept (33)
+    on left: 0
+lines (34)
+    on left: 1 2, on right: 0 2
+line (35)
+    on left: 3 4 5 6 7 8 9 10 11 12 13 14 15 16, on right: 2
+fun_begin (36)
+    on left: 17, on right: 12
+fun_end (37)
+    on left: 18, on right: 14
+para_num (38)
+    on left: 19, on right: 13
+return_stmt (39)
+    on left: 20, on right: 15
+binary (40)
+    on left: 21, on right: 3
+identifiernum (41)
+    on left: 22 23, on right: 21
+binary_ops (42)
+    on left: 24, on right: 21
+identifier (43)
+    on left: 25, on right: 21 22 28 29 30 32 35 36 38 39 40 41 42 43
+    44
+num (44)
+    on left: 26, on right: 18 19 23 30 33 37 38 44
+label (45)
+    on left: 27, on right: 17 31 32 33 34
+unary (46)
+    on left: 28, on right: 4
+copy (47)
+    on left: 29 30, on right: 5
+label1 (48)
+    on left: 31, on right: 11
+conditional_jump (49)
+    on left: 32 33, on right: 6
+unconditional_jump (50)
+    on left: 34, on right: 7
+function_call (51)
+    on left: 35, on right: 8
+pushargs (52)
+    on left: 36 37, on right: 16
+indexed_copy (53)
+    on left: 38 39, on right: 9
+address_pointer_assignment (54)
+    on left: 40 41 42 43 44, on right: 10
+
+
+State 0
+
+    0 $accept: . lines $end
+
+    $default  reduce using rule 1 (lines)
+
+    lines  go to state 1
+
+
+State 1
+
+    0 $accept: lines . $end
+    2 lines: lines . line
+
+    $end       shift, and go to state 2
+    ID         shift, and go to state 3
+    FUNCEND    shift, and go to state 4
+    PARAMSNUM  shift, and go to state 5
+    RETURN     shift, and go to state 6
+    PUSHARGS   shift, and go to state 7
+    IF         shift, and go to state 8
+    GOTO       shift, and go to state 9
+    LABEL      shift, and go to state 10
+    CALL       shift, and go to state 11
+    STAR       shift, and go to state 12
+    ANDP       shift, and go to state 13
+
+    line                        go to state 14
+    fun_begin                   go to state 15
+    fun_end                     go to state 16
+    para_num                    go to state 17
+    return_stmt                 go to state 18
+    binary                      go to state 19
+    identifier                  go to state 20
+    label                       go to state 21
+    unary                       go to state 22
+    copy                        go to state 23
+    label1                      go to state 24
+    conditional_jump            go to state 25
+    unconditional_jump          go to state 26
+    function_call               go to state 27
+    pushargs                    go to state 28
+    indexed_copy                go to state 29
+    address_pointer_assignment  go to state 30
+
+
+State 2
+
+    0 $accept: lines $end .
+
+    $default  accept
+
+
+State 3
+
+   25 identifier: ID .
+
+    $default  reduce using rule 25 (identifier)
+
+
+State 4
+
+   18 fun_end: FUNCEND . num
+
+    NUM  shift, and go to state 31
+
+    num  go to state 32
+
+
+State 5
+
+   19 para_num: PARAMSNUM . num
+
+    NUM  shift, and go to state 31
+
+    num  go to state 33
+
+
+State 6
+
+   20 return_stmt: RETURN .
+
+    $default  reduce using rule 20 (return_stmt)
+
+
+State 7
+
+   36 pushargs: PUSHARGS . identifier
+   37         | PUSHARGS . num
+
+    NUM  shift, and go to state 31
+    ID   shift, and go to state 3
+
+    identifier  go to state 34
+    num         go to state 35
+
+
+State 8
+
+   32 conditional_jump: IF . identifier GOTO label
+   33                 | IF . num GOTO label
+
+    NUM  shift, and go to state 31
+    ID   shift, and go to state 3
+
+    identifier  go to state 36
+    num         go to state 37
+
+
+State 9
+
+   34 unconditional_jump: GOTO . label
+
+    LABEL  shift, and go to state 10
+
+    label  go to state 38
+
+
+State 10
+
+   27 label: LABEL .
+
+    $default  reduce using rule 27 (label)
+
+
+State 11
+
+   35 function_call: CALL . identifier
+
+    ID  shift, and go to state 3
+
+    identifier  go to state 39
+
+
+State 12
+
+   40 address_pointer_assignment: STAR . identifier EQ identifier
+   44                           | STAR . identifier EQ num
+
+    ID  shift, and go to state 3
+
+    identifier  go to state 40
+
+
+State 13
+
+   43 address_pointer_assignment: ANDP . identifier EQ identifier
+
+    ID  shift, and go to state 3
+
+    identifier  go to state 41
+
+
+State 14
+
+    2 lines: lines line .
+
+    $default  reduce using rule 2 (lines)
+
+
+State 15
+
+   12 line: fun_begin .
+
+    $default  reduce using rule 12 (line)
+
+
+State 16
+
+   14 line: fun_end .
+
+    $default  reduce using rule 14 (line)
+
+
+State 17
+
+   13 line: para_num .
+
+    $default  reduce using rule 13 (line)
+
+
+State 18
+
+   15 line: return_stmt .
+
+    $default  reduce using rule 15 (line)
+
+
+State 19
+
+    3 line: binary .
+
+    $default  reduce using rule 3 (line)
+
+
+State 20
+
+   21 binary: identifier . EQ identifiernum binary_ops identifiernum
+   28 unary: identifier . EQ UNARY_OPS identifier
+   29 copy: identifier . EQ identifier
+   30     | identifier . EQ num
+   38 indexed_copy: identifier . EQ identifier LEFTSQPAR num RIGSQPAR
+   39             | identifier . EQ identifier LEFTSQPAR identifier RIGSQPAR
+   41 address_pointer_assignment: identifier . EQ STAR identifier
+   42                           | identifier . EQ ANDP identifier
+
+    EQ  shift, and go to state 42
+
+
+State 21
+
+   17 fun_begin: label . FUNCBEGIN
+   31 label1: label .
+
+    FUNCBEGIN  shift, and go to state 43
+
+    $default  reduce using rule 31 (label1)
+
+
+State 22
+
+    4 line: unary .
+
+    $default  reduce using rule 4 (line)
+
+
+State 23
+
+    5 line: copy .
+
+    $default  reduce using rule 5 (line)
+
+
+State 24
+
+   11 line: label1 .
+
+    $default  reduce using rule 11 (line)
+
+
+State 25
+
+    6 line: conditional_jump .
+
+    $default  reduce using rule 6 (line)
+
+
+State 26
+
+    7 line: unconditional_jump .
+
+    $default  reduce using rule 7 (line)
+
+
+State 27
+
+    8 line: function_call .
+
+    $default  reduce using rule 8 (line)
+
+
+State 28
+
+   16 line: pushargs .
+
+    $default  reduce using rule 16 (line)
+
+
+State 29
+
+    9 line: indexed_copy .
+
+    $default  reduce using rule 9 (line)
+
+
+State 30
+
+   10 line: address_pointer_assignment .
+
+    $default  reduce using rule 10 (line)
+
+
+State 31
+
+   26 num: NUM .
+
+    $default  reduce using rule 26 (num)
+
+
+State 32
+
+   18 fun_end: FUNCEND num .
+
+    $default  reduce using rule 18 (fun_end)
+
+
+State 33
+
+   19 para_num: PARAMSNUM num .
+
+    $default  reduce using rule 19 (para_num)
+
+
+State 34
+
+   36 pushargs: PUSHARGS identifier .
+
+    $default  reduce using rule 36 (pushargs)
+
+
+State 35
+
+   37 pushargs: PUSHARGS num .
+
+    $default  reduce using rule 37 (pushargs)
+
+
+State 36
+
+   32 conditional_jump: IF identifier . GOTO label
+
+    GOTO  shift, and go to state 44
+
+
+State 37
+
+   33 conditional_jump: IF num . GOTO label
+
+    GOTO  shift, and go to state 45
+
+
+State 38
+
+   34 unconditional_jump: GOTO label .
+
+    $default  reduce using rule 34 (unconditional_jump)
+
+
+State 39
+
+   35 function_call: CALL identifier .
+
+    $default  reduce using rule 35 (function_call)
+
+
+State 40
+
+   40 address_pointer_assignment: STAR identifier . EQ identifier
+   44                           | STAR identifier . EQ num
+
+    EQ  shift, and go to state 46
+
+
+State 41
+
+   43 address_pointer_assignment: ANDP identifier . EQ identifier
+
+    EQ  shift, and go to state 47
+
+
+State 42
+
+   21 binary: identifier EQ . identifiernum binary_ops identifiernum
+   28 unary: identifier EQ . UNARY_OPS identifier
+   29 copy: identifier EQ . identifier
+   30     | identifier EQ . num
+   38 indexed_copy: identifier EQ . identifier LEFTSQPAR num RIGSQPAR
+   39             | identifier EQ . identifier LEFTSQPAR identifier RIGSQPAR
+   41 address_pointer_assignment: identifier EQ . STAR identifier
+   42                           | identifier EQ . ANDP identifier
+
+    NUM        shift, and go to state 31
+    ID         shift, and go to state 3
+    STAR       shift, and go to state 48
+    ANDP       shift, and go to state 49
+    UNARY_OPS  shift, and go to state 50
+
+    identifiernum  go to state 51
+    identifier     go to state 52
+    num            go to state 53
+
+
+State 43
+
+   17 fun_begin: label FUNCBEGIN .
+
+    $default  reduce using rule 17 (fun_begin)
+
+
+State 44
+
+   32 conditional_jump: IF identifier GOTO . label
+
+    LABEL  shift, and go to state 10
+
+    label  go to state 54
+
+
+State 45
+
+   33 conditional_jump: IF num GOTO . label
+
+    LABEL  shift, and go to state 10
+
+    label  go to state 55
+
+
+State 46
+
+   40 address_pointer_assignment: STAR identifier EQ . identifier
+   44                           | STAR identifier EQ . num
+
+    NUM  shift, and go to state 31
+    ID   shift, and go to state 3
+
+    identifier  go to state 56
+    num         go to state 57
+
+
+State 47
+
+   43 address_pointer_assignment: ANDP identifier EQ . identifier
+
+    ID  shift, and go to state 3
+
+    identifier  go to state 58
+
+
+State 48
+
+   41 address_pointer_assignment: identifier EQ STAR . identifier
+
+    ID  shift, and go to state 3
+
+    identifier  go to state 59
+
+
+State 49
+
+   42 address_pointer_assignment: identifier EQ ANDP . identifier
+
+    ID  shift, and go to state 3
+
+    identifier  go to state 60
+
+
+State 50
+
+   28 unary: identifier EQ UNARY_OPS . identifier
+
+    ID  shift, and go to state 3
+
+    identifier  go to state 61
+
+
+State 51
+
+   21 binary: identifier EQ identifiernum . binary_ops identifiernum
+
+    BINARY_OPERATORS  shift, and go to state 62
+
+    binary_ops  go to state 63
+
+
+State 52
+
+   22 identifiernum: identifier .
+   29 copy: identifier EQ identifier .
+   38 indexed_copy: identifier EQ identifier . LEFTSQPAR num RIGSQPAR
+   39             | identifier EQ identifier . LEFTSQPAR identifier RIGSQPAR
+
+    LEFTSQPAR  shift, and go to state 64
+
+    BINARY_OPERATORS  reduce using rule 22 (identifiernum)
+    $default          reduce using rule 29 (copy)
+
+
+State 53
+
+   23 identifiernum: num .
+   30 copy: identifier EQ num .
+
+    BINARY_OPERATORS  reduce using rule 23 (identifiernum)
+    $default          reduce using rule 30 (copy)
+
+
+State 54
+
+   32 conditional_jump: IF identifier GOTO label .
+
+    $default  reduce using rule 32 (conditional_jump)
+
+
+State 55
+
+   33 conditional_jump: IF num GOTO label .
+
+    $default  reduce using rule 33 (conditional_jump)
+
+
+State 56
+
+   40 address_pointer_assignment: STAR identifier EQ identifier .
+
+    $default  reduce using rule 40 (address_pointer_assignment)
+
+
+State 57
+
+   44 address_pointer_assignment: STAR identifier EQ num .
+
+    $default  reduce using rule 44 (address_pointer_assignment)
+
+
+State 58
+
+   43 address_pointer_assignment: ANDP identifier EQ identifier .
+
+    $default  reduce using rule 43 (address_pointer_assignment)
+
+
+State 59
+
+   41 address_pointer_assignment: identifier EQ STAR identifier .
+
+    $default  reduce using rule 41 (address_pointer_assignment)
+
+
+State 60
+
+   42 address_pointer_assignment: identifier EQ ANDP identifier .
+
+    $default  reduce using rule 42 (address_pointer_assignment)
+
+
+State 61
+
+   28 unary: identifier EQ UNARY_OPS identifier .
+
+    $default  reduce using rule 28 (unary)
+
+
+State 62
+
+   24 binary_ops: BINARY_OPERATORS .
+
+    $default  reduce using rule 24 (binary_ops)
+
+
+State 63
+
+   21 binary: identifier EQ identifiernum binary_ops . identifiernum
+
+    NUM  shift, and go to state 31
+    ID   shift, and go to state 3
+
+    identifiernum  go to state 65
+    identifier     go to state 66
+    num            go to state 67
+
+
+State 64
+
+   38 indexed_copy: identifier EQ identifier LEFTSQPAR . num RIGSQPAR
+   39             | identifier EQ identifier LEFTSQPAR . identifier RIGSQPAR
+
+    NUM  shift, and go to state 31
+    ID   shift, and go to state 3
+
+    identifier  go to state 68
+    num         go to state 69
+
+
+State 65
+
+   21 binary: identifier EQ identifiernum binary_ops identifiernum .
+
+    $default  reduce using rule 21 (binary)
+
+
+State 66
+
+   22 identifiernum: identifier .
+
+    $default  reduce using rule 22 (identifiernum)
+
+
+State 67
+
+   23 identifiernum: num .
+
+    $default  reduce using rule 23 (identifiernum)
+
+
+State 68
+
+   39 indexed_copy: identifier EQ identifier LEFTSQPAR identifier . RIGSQPAR
+
+    RIGSQPAR  shift, and go to state 70
+
+
+State 69
+
+   38 indexed_copy: identifier EQ identifier LEFTSQPAR num . RIGSQPAR
+
+    RIGSQPAR  shift, and go to state 71
+
+
+State 70
+
+   39 indexed_copy: identifier EQ identifier LEFTSQPAR identifier RIGSQPAR .
+
+    $default  reduce using rule 39 (indexed_copy)
+
+
+State 71
+
+   38 indexed_copy: identifier EQ identifier LEFTSQPAR num RIGSQPAR .
+
+    $default  reduce using rule 38 (indexed_copy)

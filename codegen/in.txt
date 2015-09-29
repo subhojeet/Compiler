@@ -1,0 +1,18 @@
+a1 = 2
+b1 = 4
+label1:
+r1 = a1 < 4
+if r1 goto label2:
+goto label3:
+label2:
+b2 = 4
+r2 = a1 + 1
+a1 = r2
+r3 = b2 + 1
+b2 = r3
+goto label1:
+label3:
+r4 = a1 + 3
+a1 = r4
+r5 = b1 + 10
+b1 = r5

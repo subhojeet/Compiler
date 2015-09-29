@@ -1,0 +1,46 @@
+fibo: funcbegin
+ParamsNum: 1
+r3 = b1 == 1
+if r3 goto label1:
+goto label3:
+label1:
+v0 = 1
+return
+goto label2:
+label3:
+r8 = b1 == 0
+if r8 goto label4:
+goto label5:
+label4:
+v0 = 1
+return
+goto label2:
+label5:
+r13 = b1 - 1
+d2 = r13
+r16 = b1 - 2
+e2 = r16
+pushArgs d2
+call fibo
+r17 = v0
+pushArgs e2
+call fibo
+r18 = v0
+r19 = r17 + r18
+c1 = r19
+label2:
+v0 = c1
+return
+funcend : 11
+main: funcbegin
+ParamsNum: 0
+inint a1
+pushArgs a1
+call fibo
+r20 = v0
+c1 = r20
+outint c1
+outstr "\n"
+v0 = 0
+return
+funcend : 3

@@ -1,0 +1,4730 @@
+/**********************************g3.l****************************************/
+/******************************************************************************/
+
+DIGIT		[0-9]
+HEX			[a-fA-F0-9]	
+LETTER		[a-zA-Z_]
+stringLit			\"([^\"]|\\.)*\"
+charLit			\'([^\']|\\.)?\'
+
+E 			[Ee][+-]?{DIGIT}+
+FS 			(f|F|l|L)
+IS 			(u|U|l|L)*
+
+
+%{
+
+#include <iostream>
+using namespace std;
+#define YY_DECL extern "C" int yylex()
+
+#include <stdio.h>
+#include<math.h>
+#include<stdlib.h>
+#include<stdbool.h>
+#include<string.h>
+	
+#include "g3.tab.h"
+
+
+
+extern int row, col;			// To keep track of row and column number
+extern bool eof;
+static void calc();
+void comment();
+extern YYLTYPE yylloc;
+
+//int yyleng;			// To keep track of colomn NUMBER
+//char* yytext;			// To show erroneous pattern
+void eat_to_newline(void);
+
+int yyparse();
+
+
+int line_no = 1;
+int col_no = 1;
+void pre_update();
+void post_update();
+
+	
+
+
+%}
+
+
+%x COMMENTS COMMENT
+
+
+%%
+
+"//"						{ col_no += yyleng; BEGIN(COMMENT); 						}
+<COMMENT>\n 				{ line_no++; col_no = 1; /*printf("COMMENT ");*/BEGIN(INITIAL); }
+<COMMENT>.					{ col_no++;													}
+
+"/*"						{ col_no += yyleng; BEGIN(COMMENTS); 						}
+<COMMENTS>"*/"				{ col_no += yyleng; /*printf("COMMENT ");*/ BEGIN(INITIAL); 	}
+<COMMENTS>\n				{ line_no++; col_no = 1; 									}
+<COMMENTS>.					{ col_no++;													}
+
+"include"	{	pre_update(); col_no += yyleng; calc();post_update();/*printf("INCLUDE\n");*/ return(INCLUDE);			}
+"break"		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("BREAK\n");*/ return(BREAK);			}
+"bool"		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("BOOL\n");*/ return(BOOL);			}
+"case"		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("CASE\n");*/ return(CASE);			}
+"char"		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("CHAR\n");*/ return(CHAR);			}
+"continue"	{	pre_update(); col_no += yyleng; calc();post_update();/*printf("CONTINUE\n");*/ return(CONTINUE);		}
+"otwise"	{	pre_update(); col_no += yyleng; calc();post_update();/*printf("OTHERWISE\n");*/ return(OTHERWISE);		}
+"do"		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("DO\n");*/ return(DO);				}
+"elif"		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("ELIF\n");*/ return(ELIF);			}
+"else"		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("ELSE\n");*/ return(ELSE);			}
+"exit"		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("EXIT\n");*/ return(EXIT);			}
+"true"		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("TRUE\n");*/ yylval.bool_val=true; return(BOOLEAN);			}
+"false"		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("FALSE\n");*/ yylval.bool_val=false;return(BOOLEAN);			}
+"float"		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("FLOAT\n");*/ return(FLOAT);			}
+"for"		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("FOR\n");*/ return(FOR);				}
+"if"		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("IF\n");*/ return(IF);				}
+"int"		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("INT\n");*/ return(INT);				}
+"return"	{	pre_update(); col_no += yyleng; calc();post_update();/*printf("RETURN\n");*/ return(RETURN);			}
+"switch"	{	pre_update(); col_no += yyleng; calc();post_update();/*printf("SWITCH\n");*/ return(SWITCH);			}
+"typedef"	{	pre_update(); col_no += yyleng; calc();post_update();/*printf("TYPEDEF\n");*/ return(TYPEDEF);			}
+"void"		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("VOID\n");*/ return(VOID);			}
+"while"		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("WHILE\n");*/ return(WHILE);			}
+"main"		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("MAIN\n");*/ return(MAIN);			}
+"getInt"     {   pre_update(); col_no += yyleng; calc();post_update();/*printf("IN\n");*/ return(GETINT);           }
+"getString"       {   pre_update(); col_no += yyleng; calc();post_update();/*printf("OUT\n");*/ return(GETSTRING);  }
+"getFloat"     {   pre_update(); col_no += yyleng; calc();post_update();/*printf("IN\n");*/ return(GETFLOAT);         }
+"printString"       {   pre_update(); col_no += yyleng; calc();post_update();/*printf("OUT\n");*/ return(PRINTSTR); }
+"printInt"     {   pre_update(); col_no += yyleng; calc();post_update();/*printf("IN\n");*/ return(PRINTINT);       }
+"printFloat"       {   pre_update(); col_no += yyleng; calc();post_update();/*printf("OUT\n");*/ return(PRINTFLOAT);}
+
+"res_str"       {   pre_update(); col_no += yyleng; calc();post_update();/*printf("RESSTR\n");*/ return(RES_STR);}
+
+"#"			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("HASH\n");*/ return('#');				}
+"+="		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("ADD_ASS\n");*/ return(ADD_ASS);	/*assignment operators*/		}
+"-="		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("SUB_ASS\n");*/ return(SUB_ASS);			}
+"*="		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("MUL_ASS\n");*/ return(MUL_ASS);			}
+"/="		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("DIV_ASS\n");*/ return(DIV_ASS);			}
+"%="		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("MOD_ASS\n");*/ return(MOD_ASS);			}
+"&="		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("AND_ASS\n");*/ return(AND_ASS);			}
+"^="		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("XOR_ASS\n");*/ return(XOR_ASS);			}
+"|="		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("OR_ASS\n");*/ return(OR_ASS);			}
+
+"++"		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("INCR\n");*/ return(INCR);			}
+"--"		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("DECR\n");*/ return(DECR);			}
+
+"<="		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("LESS_EQ_OP\n");*/ return(LESS_EQ_OP);		}
+">="		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("GREAT_EQ_OP\n");*/ return(GREAT_EQ_OP);		}
+"=="		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("EQEQ_OP\n");*/ return(EQEQ_OP);			}
+"<"			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("LESS_OP\n");*/ return(LESS_OP);			}
+">"			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("GREAT_OP\n");*/ return(GREAT_OP);		}
+"!="		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("NOTEQ_OP\n");*/ return(NOTEQ_OP);		}
+
+"&&"		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("AND_OP\n");*/ return(AND_OP);			}
+"||"		{	pre_update(); col_no += yyleng; calc();post_update();/*printf("OR_OP\n");*/ return(OR_OP);			}
+
+";"			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("SEMI_COMMA\n");*/ return(';');		}
+","			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("COMMA\n");*/ return(',');			}
+
+"{"			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("LCB\n");*/ return('{');				}
+"}"			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("RCB\n");*/ return('}');				}
+"("			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("LOB\n");*/ return('(');				}
+")"			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("ROB\n");*/ return(')');				}
+"["			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("LSB\n");*/ return('[');				}
+"]"			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("RSB\n");*/ return(']');				}
+":"			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("COLON\n");*/ return(':');			}
+"="			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("EQUAL\n");*/ return('=');			}
+
+"."			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("DOT\n");*/ return('.');				}
+
+"&"			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("BAND\n");*/ return('&');			}
+"|"			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("BOR\n");*/ return('|');				}
+"^"			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("BXOR\n");*/ return('^');			}
+"!"			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("NOT\n");*/ return('!');				}
+"~"			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("NEG\n");*/ return('~');				}
+"+"			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("PLUS\n");*/ return('+');			}
+"-"			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("MINUS\n");*/ return('-');			}
+"*"			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("MUL\n");*/ return('*');				}
+"/"			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("DIV\n");*/ return('/');				}
+"%"			{	pre_update(); col_no += yyleng; calc();post_update();/*printf("MOD\n");*/ return('%');				}
+
+
+
+[\n]		{ 	line_no++; col_no = 1; calc();																				}
+[ \t]		{	col_no+=yyleng; 																							}
+{LETTER}({LETTER}|{DIGIT})* 	{	pre_update(); col_no += yyleng; calc();post_update();  yylval.string_val = strdup(yytext);/*printf("ID\n");*/ return(ID);				}
+
+0[xX]{HEX}+{IS}? 				{	pre_update(); col_no += yyleng; calc();post_update();/*printf("NUMBER\n");*/ return(NUMBER);			}
+0{DIGIT}+{IS}? 					{	pre_update(); col_no += yyleng; calc();post_update();/*printf("NUMBER\n");*/ return(NUMBER);			}
+{DIGIT}+{IS}? 					{	pre_update(); col_no += yyleng; calc();post_update();yylval.int_val = atoi(strdup(yytext));/*printf("NUMBER\n");*/ return(NUMBER);			}
+{DIGIT}+{E}{FS}? 				{	pre_update(); col_no += yyleng; calc();post_update();yylval.int_val = atoi(strdup(yytext));/*printf("NUMBER\n");*/ return(NUMBER);			}
+{DIGIT}*"."{DIGIT}+({E})?{FS}?	{	pre_update(); col_no += yyleng; calc();post_update();yylval.float_val = atof(strdup(yytext));/*printf("NUMBER\n");*/ return(DECIMAL);			}
+{DIGIT}+"."{DIGIT}*({E})?{FS}? 	{	pre_update(); col_no += yyleng; calc();post_update();yylval.float_val = atof(strdup(yytext));/*printf("NUMBER\n");*/ return(DECIMAL);			}
+{charLit}						{	pre_update(); col_no += yyleng; calc();post_update(); yylval.char_val = yytext[1];/*printf("CHAR_LIT\n");*/ return(CHAR_LIT);		}
+{stringLit}						{	pre_update(); col_no += yyleng; calc();post_update();yylval.string_val = strdup(yytext); /*printf("STR_LIT\n");*/ return(STR_LIT);		}
+
+
+.								{	/*printf("ERROR\n");*/ pre_update(); col_no += yyleng; calc();post_update();return(ERROR);/*Ignore everything else*/	}
+
+
+%%
+
+int yywrap()
+{
+	printf("\n"); return(1);
+}
+
+void calc()
+{
+	int i;
+	for(i=0; yytext[i] != '\0';i++)
+	{
+		if(yytext[i] == '\n')
+		{
+			col=0;
+			row++;
+		}
+		else if(yytext[i] =='\t')
+		{
+			col+=8-(col%8);
+		}		
+		else
+		{
+			col++;
+		}
+	}
+
+}
+
+
+void eat_to_newline(int call)
+{
+    
+
+	//cout<<"called at no "<< call<<endl;
+	
+    int c;
+    bool brk=false;
+
+    while ((c = yyinput()) != 0  && c != '\n' && c!=10 )
+    {
+
+    	//cout<<"char read is "<<c<<endl;
+    	
+        if(c==EOF )
+        {
+            brk=true;
+            eof=true;
+            break;
+        }
+    	if(c==';')
+    	{
+    		brk=true;
+    		unput(c);
+    		break;
+    	}	
+    	if(c=='{')
+    	{
+    		brk=true;
+    		unput(c);
+    		break;
+    	}
+    	if(c=='}')
+    	{
+    		brk=true;
+    		unput(c);
+    		break;
+    	}
+        if(c==')')
+        {
+
+            brk=true;
+            break;
+        
+        }
+        if(c==']')
+        {
+
+            brk=true;
+            break;
+        
+        }
+    
+    }
+    
+    
+    if(!brk)
+    {
+    	
+    	line_no++;
+    	col_no=1;
+	}
+
+
+	 //cout<<"done till "<<c<<endl;
+}
+
+
+void post_update()
+{
+	yylloc.last_line = line_no;
+	yylloc.last_column  = col_no;
+}
+
+void pre_update()
+{
+	yylloc.first_line = line_no;
+	yylloc.first_column = col_no;
+}
+
+/**************************************g3.y*********************************/
+/****************************************************************************/
+
+
+
+//note that our grammar has right associative behavior . so to have left associativity we need to use braces.
+
+%{
+
+#include <stdio.h>
+#include <math.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <string>
+#include <iostream>
+#include <sstream>
+#include <vector>
+#include <stack>
+#include <map>
+#include <fstream>
+
+using namespace std;
+
+extern  "C" char* yytext;           // To show erroneous pattern
+extern void eat_to_newline(int);
+bool eof=false;
+
+char str[200];
+//string sem_err= " ";
+int row=1, col=1, errcount = 0;     // To keep track of row and column NUMBER
+
+
+
+// stuff from flex that bison needs to know about:
+extern "C" int yylex();
+extern "C" int yyparse();
+extern "C" FILE *yyin;
+extern "C" int yywrap();
+int yyerror(const char *s);
+extern int line_no;
+extern int col_no;
+bool caught=false;
+void semantic_error(string );
+
+
+
+typedef enum NodeType{
+        _EPSILON, _CONSTANT, _VARIABLE, _OPERATION, _CONDITION, _ASSIGN, _WHILE, _IF, _ELSE, _INCLUDE, _INCLUDE_STR, _STATEMENT,
+         _FUNCTION,_ARGLIST, _ARG, _VAR, _FTYPE, _DTYPE, _IDLIST, _STATEMENTS, _FOR, _OUT, _IN, _CASE, _OTHER, _DOWHILE, _SWITCH,
+        _FUNCTIONDEC, _DEC, _DEC_VAR, _DECVAR_EQ, _DEC_ARR, _ARG_CONS, _ARG_ID, _PARAMETERS, _PARA_DEC, _PARA_DEC_LIST, _EXPR,
+        _FACTOR_ID, _FACTOR_CONS, _IFELSE, _RETURN_STATEMENT, _RETURNEXP_STATEMENT, _BREAK_STATEMENT, _CONTINUE_STATEMENT,
+        _ELIF, _ERROR ,FUNC_CALL, _ARG_FUNC_CALL, _SEMI_COMMA, _COLON, _MAIN, _COMPOUND_STMNT, _EXPR_EXPR_OP, _EXPR_MICRO_OP, _EXPR_BRACKET,
+        _EXPR_MICROVAL, _EXPR_UNARY, _IF_ELSEIF_ELSE, _ELIF_LIST, _ELIF_PART, _IF_ELSEIF, _EXPR_MICRO_ASS_OP, _FUNCTION_DEF, _FUNCTION_DEF_VOID,
+        _FUNCTION_DEF_PARAM, _FUNCTION_DEF_PARAM_VOID, _MAIN_PARAM, _GET_INT, _GET_STRING, _GET_FLOAT, _PRINT_STRING, _PRINT_FLOAT, _PRINT_INT,
+        _CONSTANT_NUMP, _CONSTANT_FLOATP, _ID_BOOLEAN_OP
+
+}N_type;
+
+typedef enum DataType{
+        _INT, _BOOL, _FLOAT, _VOID, _CHAR, _STRING, _UNKNOWN, _EXP_INT, _EXP_BOOL, _EXP_FLOAT, _EXP_CHAR, _EXP_STRING
+}D_type;
+
+int scope=0, main_pres=1, syntactic_err=0, semantic_err=0,scope_code=0;
+int var_line_no=0;
+string threecode="";
+
+struct symtb{
+    int scope;
+    string value;
+    string id;
+    DataType d_type;
+};
+
+struct cgenEntry{
+    int scope;
+    string value;
+    DataType d_type;    
+};
+
+vector< map < string, struct symtb > > symbolTable;
+vector< map < string, struct cgenEntry> > cgenTable;
+
+struct functb{
+    DataType r_type;
+    vector<DataType>params;
+    string func_name;
+    map<string, int> var_list;
+};
+
+
+map<string, int> tmp_vars;
+map<string, struct cgenEntry> global_var;
+
+
+vector<DataType> return_v;
+vector<DataType> arg_v;
+map<string, struct functb > functionTable;
+vector<DataType>pv;
+map<string, struct functb>::iterator mit;
+map<string, struct functb>::iterator mit1;
+
+struct AST {
+    //int child_no;
+    //struct AST** children;
+    //char value[100];
+    //char code[500];
+    vector<struct AST*> v;
+    N_type n_type;
+    D_type d_type;
+    string value;
+    string code;
+};
+
+
+void add_in_tmp_var(string s){
+    map<string, int>::iterator it;
+    it = tmp_vars.find(s);
+    if(it==tmp_vars.end()){
+        tmp_vars.insert(pair<string, int>(s, var_line_no));
+        var_line_no++;
+    }
+}
+
+void add_global_to_tmp_vars(string s)
+{
+    map<string, int>::iterator it;
+    map<string, struct cgenEntry>::iterator it1;
+    string x,a;
+    int scop;
+    int sz = tmp_vars.size();
+    for(it1=global_var.begin(); it1!=global_var.end(); ++it1){
+        x=it1->first;
+        scop = (it1->second).scope;
+        stringstream ss;
+        ss << scop;
+        a=x+ss.str();
+        it=tmp_vars.find(a);
+        if(it==tmp_vars.end()){
+            tmp_vars.insert(pair<string, int>(a, sz));
+            sz++;
+        }
+    }
+} 
+
+
+/****************************************Function Table*******************************/
+/*************************************************************************************/
+void check_args(string s){
+    mit=functionTable.find(s);
+    if(mit!=functionTable.end()){
+        vector<DataType>::iterator pit1;
+        vector<DataType>::iterator pit2;
+        vector<DataType> tmp;
+        tmp=(mit->second).params;
+        if(arg_v.size()!=tmp.size()){
+            semantic_err=1;
+            cout << s << ": number of function parameters not matching" << endl;
+        }else{
+            for(pit1=arg_v.begin(),pit2=tmp.begin();pit1!=arg_v.end() && pit2!=tmp.end(); ++pit1,++pit2){
+                if(*pit1!=*pit2){
+                    semantic_err=1;
+                    cout << s << ": function call argument type not matching" << endl;
+                    break;
+                }
+            }
+        }
+    }else{
+        semantic_err=1;
+        cout << s << " function not defined" << endl;
+    }
+}
+
+DataType find_return_type(string s){
+    mit=functionTable.find(s);
+    if(mit!=functionTable.end()){
+        return (mit->second).r_type;
+    }else{
+        semantic_err=1;
+        return _VOID;
+    }
+}
+
+void check_returning(DataType d, string s){
+    vector<DataType>::iterator rit;
+    if(return_v.size()<=0 && d!=_VOID){
+        semantic_err=1;
+        cout << "In function :" << s << " expecting return\n";
+    }
+    for(rit=return_v.begin();rit!=return_v.end();++rit){
+        if(*rit!=d){
+            semantic_err=1;
+            cout << "In function :" << s << " return type is not matching with what you are returning\n";
+        }
+    }
+    return_v.clear();
+}
+
+void check_validity_function(string s, DataType d){
+    mit=functionTable.find(s);
+    if(mit!=functionTable.end()){
+        if((mit->second).r_type!=d){
+            semantic_err=1;
+            cout << s << ": function return typr not matching" << endl; 
+        }
+    }else{
+        semantic_err=1;
+        cout << s << ": function not defined" << endl;
+    }
+}
+
+void check_validity_function_p(string s, DataType d){
+    mit=functionTable.find(s);
+    if(mit!=functionTable.end()){
+        if((mit->second).r_type!=d){
+            semantic_err=1;
+            cout << s << ": function return type not matching" << endl; 
+        }
+        vector<DataType>::iterator pit1;
+        vector<DataType>::iterator pit2;
+        vector<DataType> tmp;
+        tmp=(mit->second).params;
+        if(pv.size()!=tmp.size()){
+            semantic_err=1;
+            cout << s << ": function parameters not matching" << endl;
+        }else{
+            for(pit1=pv.begin(),pit2=tmp.begin();pit1!=pv.end() && pit2!=tmp.end(); ++pit1,++pit2){
+                if(*pit1!=*pit2){
+                    semantic_err=1;
+                    cout << s << ": function parameters not matching" << endl;
+                    break;
+                }
+            }
+        }
+    }else{
+        semantic_err=1;
+        cout << s << " function not defined" << endl;
+    }
+}
+
+
+void add_var_list(string s){
+    add_global_to_tmp_vars(s);
+    mit = functionTable.find(s);
+    if(mit!=functionTable.end()){
+        //cout << "yahan aya\n";
+        (mit->second).var_list = tmp_vars;
+    }else{
+        cout << "nahi mila\n";
+    }
+}
+
+void add_entry_functb(DataType d, string s){
+    struct functb tb;
+    tb.func_name = s;
+    tb.r_type = d;
+    functionTable.insert(pair<string, struct functb>(s, tb));
+}
+
+void set_params(string s){
+    mit=functionTable.find(s);
+    if(mit!=functionTable.end()){
+        (mit->second).params = pv;
+    }
+}
+
+void fill_params(struct AST* node){
+    vector<struct AST*>::iterator it1;
+    if(node->n_type==_DTYPE){
+        pv.push_back(node->d_type);
+    }else{
+        for(it1=(node->v).begin();it1!=(node->v).end();it1++){
+            fill_params(*it1);
+        }
+    }
+}
+
+bool is_in_map(string s){
+    mit=functionTable.find(s);
+    if(mit!=functionTable.end()){
+        return true;
+    }
+    return false;
+}
+
+/***************************************************************************/
+/***************************************************************************/
+
+void create_dot_graph(struct AST*, string);
+
+string find_dty(DataType d){
+    switch(d){
+        case _INT: return "int";
+        case _FLOAT: return "float";
+        case _BOOL: return "bool";
+        case _CHAR: return "char";
+        case _STRING: return "string";
+        default: return "unknown";
+    }
+}
+
+DataType expc_datatype(DataType d){
+    switch(d){
+        case _INT: return _EXP_INT;
+        case _FLOAT: return _EXP_FLOAT;
+        case _BOOL: return _EXP_BOOL;
+        case _CHAR: return _EXP_CHAR;
+        case _STRING: return _EXP_STRING;
+        default: return _VOID;
+    }
+}
+
+int find_scope(string s){
+    int sz = symbolTable.size();
+    int ans = sz-1;
+    map<string, struct symtb>::iterator it;
+    vector< map < string, struct symtb > >::reverse_iterator it1;
+    for(it1=symbolTable.rbegin();it1!=symbolTable.rend();++it1){
+        it=it1->find(s);
+        if(it!=it1->end()){
+            return ans;
+        }
+        ans--;
+    }
+    return ans;
+}
+
+int in_current_scope(string s){
+    
+    map<string, struct symtb>::iterator it;
+    it=symbolTable.back().find(s);
+    if(it!=symbolTable.back().end()){
+        return 1;
+    }else{
+        return 0;
+    }
+}
+
+void rec_set_type(DataType d, struct AST* node){
+    vector<struct AST*>::iterator it1;
+    if(node->n_type==_DEC){
+        for(it1=(node->v).begin();it1!=(node->v).end();it1++){
+            rec_set_type(d, *it1);
+        }
+    }else if(node->n_type==_DEC_VAR || node->n_type==_DECVAR_EQ || node->n_type==_DEC_ARR){
+        if(node->n_type==_DECVAR_EQ){
+            if(node->d_type==_EXP_INT && (d!=_INT && d!=_FLOAT)){
+                semantic_err=1;semantic_error(" Invalid assignment to variable");
+                //printf("Invalid assignment to variable\n");
+            }else if(node->d_type==_EXP_FLOAT && (d!=_FLOAT )){
+                semantic_err=1;semantic_error("Invalid assignment to variable ");
+                //printf("Invalid assignment to variable\n");
+            }else if(node->d_type==_EXP_BOOL && d!=_BOOL){
+                semantic_err=1;semantic_error("Invalid assignment to variable ");
+                //printf("Invalid assignment to variable\n");
+            }else if(node->d_type==_EXP_CHAR && d!=_CHAR){
+                semantic_err=1;semantic_error("Invalid assignment to variable ");
+                //printf("Invalid assignment to variable\n");
+            }else if(node->d_type==_EXP_STRING && d!=_STRING){
+                semantic_err=1;semantic_error("Invalid assignment to variable ");
+                //printf("Invalid assignment to variable\n");
+            }
+        }
+        map<string, struct symtb>::iterator it;
+        it = symbolTable.back().find(node->value);
+        if(it!=symbolTable.back().end()){
+            (it->second).d_type = d;
+        }
+    }
+    return;
+}
+
+void add_to_symtb(DataType d,int scp,string id, string val1){
+    int sz=symbolTable.size();
+    //cout << "Size "<< sz << endl;
+    struct symtb tb;
+    tb.scope=scp;
+    tb.id=id;
+    tb.value=val1;
+    tb.d_type=d;
+    symbolTable.back().insert(pair<string, struct symtb>(id,tb));
+    /*if(sz>scope){
+        symbolTable[scope].insert(pair<string, struct symtb>(id,tb));
+    }else{
+        map<string, struct symtb> mm;
+        mm.insert(pair<string, struct symtb>(id,tb));
+        symbolTable.push_back(mm);
+    }*/
+}
+
+void set_type(DataType d,string id){
+    if(in_current_scope(id)==1){
+        //printf("Redeclaration of variable %s\n",s);
+        //cout << "Redefination of variable " << id << endl;
+        stringstream ss;
+        ss<<"Redefination of variable "<<  id;
+        string err_msg = ss.str();
+        semantic_err=1;semantic_error(err_msg);
+    }else{
+        add_to_symtb(d,scope, id, "");
+    }
+}
+
+struct AST* newopnode(string val){
+    //cout << "cr3" << endl;
+    struct AST* a;
+    a = new struct AST[1];
+    a->code = "";
+    a->value = val;
+    a->n_type = _OPERATION;
+    a->d_type = _VOID;
+    //cout << a << endl;
+    return a;
+}
+
+struct AST* newnode(DataType d, NodeType n, string code){
+    //cout << "cr2" << endl;
+    struct AST* a;
+    a = new struct AST[1];
+    a->code = code;
+    a->value = "";
+    a->n_type = n;
+    a->d_type = d;
+    //cout << a << endl;
+    return a;
+}
+
+struct AST* newnode(DataType d, NodeType n, string code, string val){
+    struct AST* a;
+    a = new struct AST[1];
+    //cout << "cr1" << endl;
+    a->code = code;
+    a->value = val;
+    a->n_type = n;
+    a->d_type = d;
+    //cout << a << endl;
+    return a;
+}
+
+struct AST* newnode(){
+    struct AST* a;
+    a = new struct AST[1];
+    //cout << "cr" << endl;
+    a->code = "";
+    a->value = "";
+    a->n_type = _STATEMENTS;
+    a->d_type = _VOID;
+    //cout << a << endl;
+    return a;
+}
+
+DataType find_type_id(string s){
+    DataType d=_UNKNOWN;
+    map<string, struct symtb>::iterator it;
+    it=symbolTable.back().find(s);
+    if(it!=symbolTable.back().end()){
+        d=(it->second).d_type;
+    }else{
+        int scp;
+        scp=find_scope(s);
+        if(scp<0){
+            //cout << "variable not  defined " << s << endl;
+            
+            stringstream ss;
+            ss<<"variable not  defined  "<<  s;
+            string err_msg = ss.str();
+            semantic_err=1;semantic_error(err_msg);
+        }else{
+            it=symbolTable[scp].find(s);
+            if(it!=symbolTable[scp].end()){
+                d=(it->second).d_type;
+            }
+        }
+    }
+    return d;
+}
+
+
+bool logical(string op){
+    if(op=="||" || op=="&&")
+        return true;
+    return false;
+}
+
+bool realational(string op){
+    if(op=="<" || op==">"  || op==">=" || op=="<=" )
+        return true;
+    return false;
+}
+
+bool eqeqop(string op){
+    if( op=="==" || op=="!=")
+        return true;
+    return false;
+}
+
+
+bool assignment(string op){
+    if(op=="=" || op=="+="  || op=="-=" || op=="*=" || op=="/=" || op=="%=" || op=="|=" || op=="&=" || op=="^=")
+        return true;
+    return false;   
+}
+
+bool bit_logical(string op){
+    if(op=="^" || op=="|"  || op=="&")
+        return true;
+    return false;   
+}
+
+bool binary(string op){
+    if(op=="+" || op=="*"  || op=="-" || op=="/" || op=="%")
+        return true;
+    return false;
+}
+
+void check_validity(string op, DataType d1, DataType d2, DataType *d){
+    if(d1!=d2 || (d1==_VOID || d2==_VOID) || (d1==_UNKNOWN || d2==_UNKNOWN)){
+        stringstream ss;
+        ss<<"type mismatch for "<<  op;
+        string err_msg = ss.str();
+        semantic_err=1;semantic_error(err_msg);
+        //printf("type mismatch for %s\n",op);
+        //cout << "type mismatch for " << op << endl;
+    }
+    if(logical(op) && (d1!=_BOOL || d2!=_BOOL)){
+        stringstream ss;
+        ss<<"type mismatch for " << op << " must be bool";
+        string err_msg = ss.str();
+        semantic_err=1;semantic_error(err_msg);
+        //printf("type mismatch for %s\n , must be bool",op);
+        //cout << "type mismatch for " << op << " must be bool" << endl;    
+    }
+    if(realational(op) && ((d1==_BOOL || d2== _BOOL))){
+        stringstream ss;
+        ss<<"type mismatch for " << op << " must be int,float,string,char" ;
+        string err_msg = ss.str();
+        semantic_err=1;semantic_error(err_msg);
+        //printf("type mismatch for %s\n , must be int,float,string or char",op);
+        //cout << "type mismatch for " << op << " must be int,float,string,char" << endl;   
+    }
+    if(logical(op)){
+        *d=_BOOL;
+    }else if(realational(op)){
+        *d=_BOOL;
+    }else if(assignment(op)){
+        *d=_VOID;
+    }else if(bit_logical(op)){
+        *d=d1;
+    }else if(binary(op)){
+        *d=d1;
+    }
+}
+
+struct AST* root;
+
+%}
+
+%union
+{
+    struct AST* node;
+    int int_val;
+    float float_val;
+    bool bool_val;
+    char* string_val;
+    char char_val;
+}
+
+%define parse.error verbose
+%locations
+
+%type <node> expr expr_stmnt data_type include_dec func_dec func_def main_func micro_val arg arg_list compound_stmnt 
+            stmnt_list stmnt jump_stmnt condition_stmnt loop_stmnt exit_stmnt io_stmnt labeled_stmnt 
+            operators binary_op logical_op bit_logical_op assignment_op relational_op Start1 Start2 
+            Start_sym string unary_op param_list dec dec_init ID_init_list constant param func_compound_stmnt ext_dec 
+            otwise_stmnt switch_stmnt switch_stmnt_list1 switch_stmnt_list elif_list expr_stmnt_list expr_stmnt_list_cond semi_comma colon
+            elseifpart arg_print_int arg_printstr  arg_print_float arg_get_str arg_get_float arg_get_int
+            
+
+
+%token <int_val> NUMBER
+%token <float_val> DECIMAL
+%token <bool_val> BOOLEAN
+%token <string_val> STR_LIT
+%token <string_val> ID
+%token <char_val> CHAR_LIT
+
+%token INT FLOAT CHAR BOOL VOID STRING
+
+%token   ADD_ASS SUB_ASS MUL_ASS DIV_ASS MOD_ASS AND_ASS XOR_ASS OR_ASS 
+%token BREAK CONTINUE RETURN
+%token FOR WHILE IF ELSE DO ELIF
+%token LESS_OP GREAT_OP LESS_EQ_OP GREAT_EQ_OP EQEQ_OP NOTEQ_OP AND_OP OR_OP
+%token MAIN IN OUT INCLUDE   EXIT GETFLOAT GETINT GETSTRING PRINTSTR PRINTFLOAT PRINTINT
+%token CASE OTHERWISE SWITCH
+%token ERROR INCR DECR TYPEDEF RES_STR
+
+%right '=' ADD_ASS SUB_ASS MUL_ASS DIV_ASS MOD_ASS AND_ASS XOR_ASS OR_ASS 
+%left LESS_OP GREAT_OP LESS_EQ_OP GREAT_EQ_OP 
+%left EQEQ_OP NOTEQ_OP
+%left AND_OP OR_OP
+%left '+' '-' 
+%left '*' '/' '%'
+
+
+
+
+%expect 0
+
+%start Start_sym
+
+%%
+Start_sym
+        :   Start1 main_func    {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($1);
+            (nnode->v).push_back($2);
+            nnode->code="Start";
+            root = nnode;
+            $$ = nnode;
+        }
+        ;
+
+Start1
+        :   Start1 func_def     {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($1);
+            (nnode->v).push_back($2);
+            nnode->code="Start1";
+            $$ = nnode;
+        }
+        |   Start1 func_dec     {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($1);
+            (nnode->v).push_back($2);
+            nnode->code="Start1";
+            $$ = nnode;
+        }
+        |   Start1 ext_dec          {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($1);
+            (nnode->v).push_back($2);
+            nnode->code="Start1";
+            $$ = nnode;
+        }
+        |   Start2      {
+            /*cout << "2" << endl;
+            struct AST* nnode=newnode();
+            cout << nnode << endl;
+            (nnode->v).push_back($1);
+            $$->code = "Start1";
+            $$ = nnode;*/
+            $$=$1;
+        }
+        ;
+
+Start2
+        :   Start2 include_dec  {
+            //cout << "3" << endl;
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($1);
+            (nnode->v).push_back($2);
+            nnode->code="Start2";
+            $$ = nnode;
+        }
+        |   {
+            struct AST* nnode=newnode();
+            nnode->n_type=_EPSILON;
+            nnode->code="EPSILON";
+            $$ = nnode;
+        }
+        ;
+
+data_type
+        :   INT     {
+            struct AST* nnode=newnode();
+            nnode->n_type=_DTYPE;
+            nnode->d_type=_INT;
+            nnode->code="INT_data_type";
+            $$=nnode;
+
+        }
+        |   FLOAT   {
+            struct AST* nnode=newnode();
+            nnode->n_type=_DTYPE;
+            nnode->d_type=_FLOAT;
+            nnode->code="FLOAT_data_type";
+            $$=nnode;   
+        }
+        |   BOOL    {
+            struct AST* nnode=newnode();
+            nnode->n_type=_DTYPE;
+            nnode->d_type=_BOOL;
+            nnode->code="BOOL_data_type";
+            $$=nnode;
+        }
+        |   CHAR    {
+            struct AST* nnode=newnode();
+            nnode->n_type=_DTYPE;
+            nnode->d_type=_CHAR;
+            nnode->code="CHAR_data_type";
+            $$=nnode;
+        }
+        |   STRING  {
+
+            struct AST* nnode=newnode();
+            nnode->n_type=_DTYPE;
+            nnode->d_type=_STRING;
+            nnode->code="STRING_data_type";
+            $$=nnode;
+        }
+        
+        ;
+
+include_dec
+        :   '#' INCLUDE string  { 
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($3);
+            nnode->n_type=_INCLUDE_STR;
+            nnode->code="INCLUDE";
+            $$=nnode;
+        }
+        |   '#' INCLUDE LESS_OP ID '.' ID GREAT_OP  {
+            struct AST* nnode=newnode();
+            string s1($4);
+            string s2($6);
+            nnode->n_type=_INCLUDE;
+            nnode->code="INCLUDE<" + s1 + "." + s2 + ">";
+            $$=nnode;
+        }
+        |   '#' INCLUDE LESS_OP ID GREAT_OP {
+            //cout << "4" << endl;
+            struct AST* nnode=newnode();
+            string s1($4);
+            nnode->n_type=_INCLUDE;
+            nnode->code="INCLUDE<" + s1 + ">";
+            $$=nnode;
+        }
+        |   '#' error   {
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            //printing the error message in header declaration
+                            /*caught=true;
+                            sprintf (str, "in header declaration");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            eat_to_newline(1);
+                            
+                            yyclearin;yyerrok;
+                        }
+        ;
+    
+string
+        :   STR_LIT     {
+            struct AST* nnode=newnode();
+            string val($1);
+            nnode->n_type=_CONSTANT;
+            nnode->d_type=_STRING;
+            nnode->value=val;
+            nnode->code="String_constant";
+            $$ = nnode;
+        }
+        ;
+
+main_func
+        :   INT MAIN _LOB param ')' func_compound_stmnt     {
+            struct AST* nnode=newnode(_INT, _MAIN_PARAM, "MAIN", "main");
+            (nnode->v).push_back($4);
+            (nnode->v).push_back($6);
+            $$ = nnode;
+
+            add_entry_functb(_INT, "main");
+            pv.clear();
+            fill_params($4);
+            set_params("main");
+            check_returning(_INT, "main");
+        }
+        |   INT MAIN _LOB ')' func_compound_stmnt   {
+            struct AST* nnode=newnode(_INT, _MAIN, "MAIN","main");
+            (nnode->v).push_back($5);
+            $$ = nnode;
+            add_entry_functb(_INT, "main");
+            check_returning(_INT, "main");
+        }
+        |   VOID MAIN _LOB param ')' func_compound_stmnt    {
+            struct AST* nnode=newnode(_VOID, _MAIN_PARAM, "MAIN", "main");
+            (nnode->v).push_back($4);
+            (nnode->v).push_back($6);
+            $$ = nnode;
+            add_entry_functb(_VOID, "main");
+            pv.clear();
+            fill_params($4);
+            set_params("main");
+            check_returning(_VOID, "main");
+        }
+        |   VOID MAIN _LOB ')' func_compound_stmnt  {
+            //cout << "5" << endl;
+            struct AST* nnode=newnode(_VOID, _MAIN, "MAIN", "main");
+            (nnode->v).push_back($5);
+            $$ = nnode;
+            add_entry_functb(_VOID, "main");
+            check_returning(_VOID, "main");
+        }
+        |   {
+            main_pres=0;
+            $$ = newnode(_VOID,_ERROR,"NO_MAIN","");
+        }
+        |   INT MAIN error{
+                            
+                            //printing the error message in header declaration
+                            /*caught=true;
+                            sprintf (str, "in main function");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(2);
+                            
+                            yyclearin;yyerrok;
+                        }
+        |   VOID MAIN error{
+                            
+                            //printing the error message in header declaration
+                            /*caught=true;
+                            sprintf (str, "in main function");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(3);
+                            
+                            yyclearin;yyerrok;
+                        }
+        
+        ;
+
+func_dec
+        :   data_type ID _LOB param _ROB semi_comma     {
+            string s($2);
+            DataType d=$1->d_type;
+            struct AST* nnode=newnode(d, _FUNCTIONDEC, s+"_FUNCTION_DEC", s+"_FUNCTION_DEC");
+            (nnode->v).push_back($4);
+            $$ = nnode;
+            //check if already defined
+            if(is_in_map(s)){
+                semantic_err=1;
+                cout << "Redefination of function :" + s << endl;
+            }else{
+                add_entry_functb(d, s);
+                pv.clear();
+                fill_params($4);
+                set_params(s);
+            }
+        }
+        |   data_type ID _LOB _ROB semi_comma   {
+            string s($2);
+            DataType d=$1->d_type;
+            struct AST* nnode=newnode(d, _FUNCTIONDEC, s+"_FUNCTION_DEC", s+"_FUNCTION_DEC");
+            $$ = nnode;
+            //check if already defined
+            if(is_in_map(s)){
+                semantic_err=1;
+                cout << "Redefination of function :" + s << endl;
+            }else{
+                add_entry_functb(d, s);
+            }
+        }
+        |   VOID ID _LOB param _ROB semi_comma  {
+            string s($2);
+            struct AST* nnode=newnode(_VOID, _FUNCTIONDEC, s+"_FUNCTION_DEC", s+"_FUNCTION_DEC");
+            (nnode->v).push_back($4);
+            $$ = nnode;
+            //check if already defined
+            if(is_in_map(s)){
+                semantic_err=1;
+                cout << "Redefination of function :" + s << endl;
+            }else{
+                add_entry_functb(_VOID, s);
+                pv.clear();
+                fill_params($4);
+                set_params(s);
+            }
+        }
+        |   VOID ID _LOB _ROB semi_comma    {
+            string s($2);
+            struct AST* nnode=newnode(_VOID, _FUNCTIONDEC, s+"_FUNCTION_DEC", s+"_FUNCTION_DEC");
+            $$ = nnode;
+            //check if already defined
+            if(is_in_map(s)){
+                semantic_err=1;
+                cout << "Redefination of function :" + s << endl;
+            }else{
+                add_entry_functb(_VOID, s);
+            }
+        }
+        |   data_type ID _LOB error {
+                            //printing the error message in func declaration
+                            /*caught=true;
+                            sprintf (str, "in function declaration");
+
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(4);
+                            
+                            yyclearin;yyerrok;
+                }
+
+        |   VOID ID _LOB error  {
+                            //printing the error message in func declaration
+                            /*caught=true;
+                            sprintf (str, "in function declaration");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(5);
+                            
+                            yyclearin;yyerrok;
+                }
+        
+        ;
+
+semi_comma
+        :   ';' {
+
+                    $$ = newnode(_VOID,_SEMI_COMMA,"SEMI_COMMA","");
+
+        }
+        |   error {
+                            
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            /*caught=true;
+                            sprintf (str, "Missing ';' ");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+
+
+                            yyerrok;
+                            
+                            
+                }
+        ;
+param
+        :   param_list  {
+            //cout << "enter param" << endl;
+            /*map<string, struct symtb> mm;
+            symbolTable.push_back(mm);*/
+            //cout << "Size in param " << symbolTable.size() << endl;
+            struct AST* nnode=newnode(_VOID, _PARAMETERS, "PARAMETERS", "");
+            (nnode->v).push_back($1);
+            $$=nnode;
+        }
+        ;
+
+        
+func_def
+        :   data_type ID _LOB param ')' func_compound_stmnt {
+            string s($2);
+            //cout << "funcdef" << endl;
+            DataType d = $1->d_type;
+            //cout << "funcdef2" << endl;
+            struct AST* nnode=newnode(d, _FUNCTION_DEF_PARAM, s+"_FUNCTION", s);
+            (nnode->v).push_back($1);
+            (nnode->v).push_back($4);
+            (nnode->v).push_back($6);
+            //check if already defined
+            if(is_in_map(s)){
+                pv.clear();
+                fill_params($4);
+                check_validity_function_p(s,d);
+            }else{
+                add_entry_functb(d, s);
+                pv.clear();
+                fill_params($4);
+                set_params(s);
+            }
+            check_returning(d, s);
+            $$ = nnode;
+        }
+        |   data_type ID _LOB ')' func_compound_stmnt       {
+            string s($2);
+            DataType d = $1->d_type;
+            struct AST* nnode=newnode(d, _FUNCTION_DEF, s+"_FUNCTION", s);
+            (nnode->v).push_back($1);
+            (nnode->v).push_back($5);
+            //check if already defined
+            if(is_in_map(s)){
+                check_validity_function(s,d);
+            }else{
+                add_entry_functb(d, s);
+            }
+            check_returning(d, s);
+            $$ = nnode;
+        }
+        |   VOID ID _LOB param ')' func_compound_stmnt  {
+            string s($2);
+            struct AST* nnode=newnode(_VOID, _FUNCTION_DEF_PARAM_VOID, s+"_FUNCTION", s);
+            (nnode->v).push_back($4);
+            (nnode->v).push_back($6);
+            //check if already defined
+            if(is_in_map(s)){
+                pv.clear();
+                fill_params($4);
+                check_validity_function_p(s,_VOID);
+            }else{
+                add_entry_functb(_VOID, s);
+                pv.clear();
+                fill_params($4);
+                set_params(s);
+            }
+            check_returning(_VOID, s);
+            $$ = nnode;
+        }
+        |   VOID ID _LOB ')' func_compound_stmnt    {
+            string s($2);
+            struct AST* nnode=newnode(_VOID, _FUNCTION_DEF_VOID, s+"_FUNCTION", s);
+            (nnode->v).push_back($5);
+            //check if already defined
+            if(is_in_map(s)){
+                check_validity_function(s,_VOID);
+            }else{
+                add_entry_functb(_VOID, s);
+            }
+            check_returning(_VOID, s);
+            $$ = nnode;
+        }
+        |   data_type error func_compound_stmnt {
+                            
+                            /*caught=true;
+                            sprintf (str, "in function definition");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            yyerrok;
+                            
+                            
+                }
+        ;
+        
+
+micro_val
+        :   constant    {
+            //cout << "enter here" << endl;
+            //cout << "enter here1" << endl;
+            //cout << $1->value << endl;
+            //cout << "enter here2" << endl;
+            struct AST* nnode=newnode($1->d_type, _FACTOR_CONS, "Constant_factor "+ $1->value, $1->value);
+            //cout << "now here" << endl;
+            (nnode->v).push_back($1);
+
+            $$=nnode;
+        }
+        |   ID  {
+            string s($1);
+            struct AST* nnode=newnode(_VOID, _FACTOR_ID, "Id_factor "+s, s);
+            DataType d=find_type_id(s);
+            nnode->d_type=d;
+            $$=nnode;
+        }
+        |   ID '(' ')' {
+
+            string s($1);
+            struct AST* nnode=newnode(_VOID, FUNC_CALL, s + "()", s);
+            nnode->d_type=_UNKNOWN;
+            
+            if(!is_in_map(s)){
+                semantic_err=1;
+                cout << s << " function is not defined\n";
+            }else{
+                map<string, struct functb>::iterator mp1;
+                mp1=functionTable.find(s);
+                if(mp1!=functionTable.end()){
+                    if((mp1->second).params.size()!=0){
+                        semantic_err=1;
+                        cout << s << " given argument expecting none\n";
+                    }
+                }
+                DataType d=find_return_type(s);
+                nnode->d_type=d;
+            }
+            arg_v.clear();
+            $$=nnode;
+
+        }
+        |   ID '(' arg_list ')' {
+
+            string s($1);
+            struct AST* nnode=newnode(_VOID, _ARG_FUNC_CALL, s + "()", s);
+            (nnode->v).push_back($3);
+            nnode->d_type=_UNKNOWN;
+            
+            if(!is_in_map(s)){
+                semantic_err=1;
+                cout << s << " function is not defined\n";
+            }else{
+                check_args(s);
+                DataType d=find_return_type(s);
+                nnode->d_type=d;
+            }
+            arg_v.clear();
+            $$=nnode;
+        }
+        |   ID '[' expr ']'  {
+
+            if($3->d_type!=_INT)
+            {
+                //printf("Expression in array index must be int\n");
+                stringstream ss;
+                ss<<"Expression in array index must be int " ;
+                string err_msg = ss.str();
+                semantic_err=1;semantic_error(err_msg);
+                
+            }
+            string s($1);
+
+            struct AST* nnode=newnode(_VOID, _FACTOR_ID, s + "[" + $3->value + "]", s);
+            DataType d=find_type_id(s);
+            nnode->d_type=d;
+            (nnode->v).push_back($3);
+            $$=nnode;
+        }
+        |   ID '(' error ';' {
+                            
+                            /*caught=true;
+                            sprintf (str, "in expression1 ");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(6);
+                            
+                            yyclearin;yyerrok;
+                }
+
+        |   ID '[' error  {
+                            
+                            /*caught=true;
+                            sprintf (str, "in expression ");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(7);
+                            
+                            yyclearin;yyerrok;
+                            //cout<<"ho gaya"<<yytext<<endl;
+                }
+
+        ;
+
+        
+
+expr
+        :   micro_val   {
+            struct AST* nnode=newnode($1->d_type, _EXPR_MICROVAL, "EXPR_microval", $1->value);
+            (nnode->v).push_back($1);
+            $$=nnode;
+        }
+        |   '(' expr ')'    {
+            struct AST* nnode=newnode($2->d_type, _EXPR_BRACKET, "EXPR_expr", "("+$2->value+")");
+            (nnode->v).push_back($2);
+            $$=nnode;
+        }
+        |   unary_op expr   {
+            DataType d=$2->d_type;
+
+            if($1->value=="~"){
+                if(!(d==_INT || d==_FLOAT) ){
+                    stringstream ss;
+                    ss<<"type mismatch for ~" ;
+                    string err_msg = ss.str();
+                    semantic_err=1;semantic_error(err_msg);
+                    
+                    //printf("type mismatch for ~\n");
+                    
+                }
+            }else if($1->value=="!"){
+                if(!(d==_BOOL) ){
+                    stringstream ss;
+                    ss<<"type mismatch for !" ;
+                    string err_msg = ss.str();
+                    semantic_err=1;semantic_error(err_msg);
+                    //printf("type mismatch for !\n");
+                    //cout << "type mismatch for !" << endl;
+                }
+            }
+            struct AST* nnode=newnode($2->d_type, _EXPR_UNARY, "EXPR_OP_"+$1->value, $1->value+" "+$2->value);
+            (nnode->v).push_back($1);
+            (nnode->v).push_back($2);
+            $$=nnode;
+        }
+        |   micro_val operators expr    {
+            DataType d=_VOID;
+            check_validity($2->value, $1->d_type, $3->d_type,&d);
+            struct AST* nnode=newnode(d, _EXPR_MICRO_OP, "EXPR_OP_"+$2->value, $1->value + " " + $2->value + " " + $3->value);
+            (nnode->v).push_back($1);
+            (nnode->v).push_back($2);
+            (nnode->v).push_back($3);
+            $$=nnode;
+        }
+        |   micro_val assignment_op expr    {
+            DataType d=_VOID;
+            check_validity($2->value, $1->d_type, $3->d_type,&d);
+            struct AST* nnode=newnode(d, _EXPR_MICRO_ASS_OP, "EXPR_OP_"+$2->value, $1->value + " " + $2->value + " " + $3->value);
+            (nnode->v).push_back($1);
+            (nnode->v).push_back($2);
+            (nnode->v).push_back($3);
+            $$=nnode;
+        }
+        |   '(' expr ')' operators expr     {
+            DataType d=_VOID;
+            check_validity($4->value, $2->d_type, $5->d_type,&d);
+            struct AST* nnode=newnode(d, _EXPR_EXPR_OP, "EXPR_OP_"+$4->value,"("+$2->value + ") " + $4->value + " " + $5->value);
+            (nnode->v).push_back($2);
+            (nnode->v).push_back($4);
+            (nnode->v).push_back($5);
+            $$=nnode;
+        }
+        
+        |   '(' expr error {
+
+                                /*caught=true;
+                            sprintf (str, "in expression ");
+                                if(yylloc.first_line)
+                                    fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                                 
+                                fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                                $$ = newnode(_VOID,_ERROR,"error","");
+                                eat_to_newline(8);
+                                
+                                yyclearin;yyerrok;
+            }
+
+
+        |   micro_val operators error {
+
+                                /*caught=true;
+                            sprintf (str, "in expression ");
+                                if(yylloc.first_line)
+                                    fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                                 
+                                fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                                $$ = newnode(_VOID,_ERROR,"error","");
+                                eat_to_newline(9);
+                                
+                                yyclearin;yyerrok;
+            }
+        |   '(' expr ')' operators error {
+
+                                /*caught=true;
+                            sprintf (str, "in expression 2");
+                                if(yylloc.first_line)
+                                    fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                                 
+                                fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                                $$ = newnode(_VOID,_ERROR,"error","");
+                                eat_to_newline(10);
+                                
+                                
+            }
+        |   micro_val ERROR expr{
+
+                                caught=true;
+                                /*errcount++;
+                                syntactic_err=1;
+                            
+                                if(yylloc.first_line)
+                                    fprintf(stderr, "%d.%d - %d.%d syntax error, unexpected %s, expecting operator before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,yytext,yytext);
+                                 
+                                fprintf(stderr, "\n");
+                                                                       */
+                                $$ = newnode(_VOID,_ERROR,"error","");
+                                sprintf(str,"%d.%d - %d.%d syntax error, unexpected token, expecting operator in the expression ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column);
+                                yyerror(str);
+                                caught=false;
+                                eat_to_newline(11);
+                                
+                                
+                                
+                                
+            }
+        |   '(' expr ')' ERROR expr {
+                                
+                                caught=true;
+                                /*errcount++;
+                                syntactic_err=1;
+                            
+                                if(yylloc.first_line)
+                                    fprintf(stderr, "%d.%d - %d.%d syntax error, unexpected %s, expecting operator before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,yytext,yytext);
+                                 
+                                fprintf(stderr, "\n");                                     */
+                                $$ = newnode(_VOID,_ERROR,"error","");
+                                sprintf(str,"%d.%d - %d.%d syntax error, unexpected token, expecting operator in the expression  ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column);
+                                yyerror(str);
+                                caught=false;
+                                eat_to_newline(12);
+                                yyclearin;yyerrok;
+                                
+                                
+            }
+            
+
+        ;
+
+arg_list
+        :   arg_list ',' arg    {
+            struct AST* nnode=newnode();
+            nnode->n_type=_ARGLIST;
+            (nnode->v).push_back($1);
+            (nnode->v).push_back($3);
+            nnode->code="ARG_LIST";         
+            $$=nnode;
+        }
+        |   arg     {
+            $$=$1;
+        }
+        |   arg_list error {
+                            
+                            /*caught=true;
+                            sprintf (str, "in parameter list");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(13);
+                            
+                            yyclearin;yyerrok;
+                }
+
+        
+        
+        ;
+        ;
+
+arg
+        :   constant    {
+            struct AST* nnode=newnode(_VOID, _ARG_CONS, "Arg : "+ $1->value, $1->value);
+            (nnode->v).push_back($1);
+            $$ = nnode;
+            arg_v.push_back($1->d_type);
+        }
+        |   ID  {  //add type of this in symbol table
+            string s($1);
+            int scp = find_scope(s);
+            if(scp<0){
+                    stringstream ss;
+                    ss<<"no variable " <<  s << " defined in scope" ;
+                    string err_msg = ss.str();
+                    semantic_err=1;semantic_error(err_msg);
+                //cout << "no variable " <<  s << " defined in scope" << endl;
+            }
+            struct AST* nnode=newnode(_VOID, _ARG_ID, "Arg : " + s, s);
+            $$ = nnode;
+            DataType d1=_UNKNOWN;
+            d1=find_type_id(s);
+            arg_v.push_back(d1);
+        }
+        ;
+
+        
+operators
+        :   binary_op   {
+            struct AST* nnode = newnode(_VOID, _OPERATION, "Operator", $1->value);
+            (nnode->v).push_back($1);
+            $$=nnode;
+        }
+        |   relational_op   {
+            struct AST* nnode = newnode(_VOID, _OPERATION, "Operator", $1->value);
+            (nnode->v).push_back($1);
+            $$=nnode;
+        }
+        |   logical_op  {
+            struct AST* nnode = newnode(_VOID, _OPERATION, "Operator", $1->value);
+            (nnode->v).push_back($1);
+            $$=nnode;
+        }
+        |   bit_logical_op  {
+            struct AST* nnode = newnode(_VOID, _OPERATION, "Operator", $1->value);
+            (nnode->v).push_back($1);
+            $$=nnode;
+        }
+        /*| assignment_op   {
+            struct AST* nnode = newnode(_VOID, _OPERATION, "Operator", $1->value);
+            (nnode->v).push_back($1);
+            $$=nnode;
+        }*/
+        ;
+
+
+        
+logical_op
+        :   AND_OP  {
+            struct AST* nnode=newopnode("&&");
+            nnode->code="&&";
+            $$=nnode;
+        }
+        |   OR_OP   {
+            struct AST* nnode=newopnode("||");
+            nnode->code="||";
+            $$=nnode;
+        }
+        ;
+        
+binary_op
+        :   '+'     {
+            struct AST* nnode=newopnode("+");
+            nnode->code="+";
+            $$=nnode;
+        }
+        |   '-'     {
+            struct AST* nnode=newopnode("-");
+            nnode->code="-";
+            $$=nnode;
+        }
+        |   '*'     {
+            struct AST* nnode=newopnode("*");
+            nnode->code="-";
+            $$=nnode;
+        }
+        |   '/'     {
+            struct AST* nnode=newopnode("/");
+            nnode->code="/";
+            $$=nnode;
+        }
+        |   '%'     {
+            struct AST* nnode=newopnode("%");
+            nnode->code="%";
+            $$=nnode;
+        }
+        ;
+assignment_op
+        :   '='     {
+            struct AST* nnode=newopnode("=");
+            nnode->code="=";
+            $$=nnode;
+        }
+        |   ADD_ASS     {
+            struct AST* nnode=newopnode("+=");
+            nnode->code="+=";
+            $$=nnode;
+        }
+        |   SUB_ASS     {
+            struct AST* nnode=newopnode("-=");
+            nnode->code="-=";
+            $$=nnode;
+        }
+        |   MUL_ASS     {
+            struct AST* nnode=newopnode("*=");
+            nnode->code="*=";
+            $$=nnode;
+        }
+        |   DIV_ASS     {
+            struct AST* nnode=newopnode("/=");
+            nnode->code="/=";
+            $$=nnode;
+        }
+        |   MOD_ASS     {
+            struct AST* nnode=newopnode("%=");
+            nnode->code="%=";
+            $$=nnode;
+        }
+        |   AND_ASS     {
+            struct AST* nnode=newopnode("&=");
+            nnode->code="&=";
+            $$=nnode;
+        }
+        |   XOR_ASS     {
+            struct AST* nnode=newopnode("^=");
+            nnode->code="^=";
+            $$=nnode;
+        }
+        |   OR_ASS  {
+            struct AST* nnode=newopnode("|=");
+            nnode->code="|=";
+            $$=nnode;
+        }
+        ;
+relational_op
+        :   LESS_OP     {
+            struct AST* nnode=newopnode("<");
+            nnode->code="<";
+            $$=nnode;
+        }
+        |   GREAT_OP    {
+            struct AST* nnode=newopnode(">");
+            nnode->code=">";
+            $$=nnode;
+        }
+        |   LESS_EQ_OP  {
+            struct AST* nnode=newopnode("<=");
+            nnode->code="<=";
+            $$=nnode;
+        }
+        |   GREAT_EQ_OP {
+            struct AST* nnode=newopnode(">=");
+            nnode->code=">=";
+            $$=nnode;
+        }
+        |   EQEQ_OP     {
+            struct AST* nnode=newopnode("==");
+            nnode->code="==";
+            $$=nnode;
+        }
+        |   NOTEQ_OP    {
+            struct AST* nnode=newopnode("!=");
+            nnode->code="!=";
+            $$=nnode;
+        }
+        ;
+
+bit_logical_op
+        :   '&'     {
+            struct AST* nnode=newopnode("&");
+            nnode->code="&";
+            $$=nnode;
+        }
+        |   '|'     {
+            struct AST* nnode=newopnode("|");
+            nnode->code="|";
+            $$=nnode;
+        }
+        |   '^'     {
+            struct AST* nnode=newopnode("^");
+            nnode->code="^";
+            $$=nnode;
+        }
+        ;
+
+unary_op
+        :   '!'     {
+            struct AST* nnode=newopnode("!");
+            nnode->code="!";
+            $$=nnode;
+        }
+        |   '~'     {
+            struct AST* nnode=newopnode("~");
+            nnode->code="~";
+            $$=nnode;
+        }
+        ;
+        
+stmnt_list
+        :    stmnt  {
+            //cout << "enter stmntlist" << endl;
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($1);
+            nnode->code="Statement_List";
+            $$ = nnode;
+        }
+        |    stmnt_list stmnt   {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($1);
+            (nnode->v).push_back($2);
+            nnode->code="Statement_List";
+            $$ = nnode;
+        }
+        ;       
+
+stmnt
+        :   compound_stmnt  {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($1);
+            nnode->code="Statement_Types";
+            $$ = nnode;
+        }
+        |   expr_stmnt  {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($1);
+            nnode->code="Statement_Types";
+            $$ = nnode;
+        }
+        |   condition_stmnt     {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($1);
+            nnode->code="Statement_Types";
+            $$ = nnode;
+        }
+        |   loop_stmnt  {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($1);
+            nnode->code="Statement_Types";
+            $$ = nnode;
+        }
+        |   jump_stmnt  {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($1);
+            nnode->code="Statement_Types";
+            $$ = nnode;
+        }
+        |   dec     {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($1);
+            nnode->code="Statement_Types";
+            $$ = nnode;
+        }
+        |   io_stmnt    {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($1);
+            nnode->code="Statement_Types";
+            $$ = nnode;
+        }
+        |   exit_stmnt {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($1);
+            nnode->code="Statement_Types";
+            $$ = nnode;
+        }
+        ;
+        
+io_stmnt
+        :   PRINTSTR '(' arg_printstr ')' ';'   {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($3);
+            nnode->n_type=_PRINT_STRING;
+            nnode->code="PRINTSTR";
+            $$=nnode;
+        }
+        /*| PRINTCHAR '(' arg_print_char ')' ';'    {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($3);
+            nnode->n_type=_OUT;
+            nnode->code="OUT";
+            $$=nnode;
+        }*/
+        |   PRINTINT '(' arg_print_int ')' ';'  {
+            struct AST* nnode=newnode();
+            //(nnode->v).push_back($3);
+            (nnode->v).push_back($3);
+            nnode->n_type=_PRINT_INT;
+            nnode->code="PRINTINT";
+            $$=nnode;
+        }
+        |   PRINTFLOAT '(' arg_print_float ')' ';'  {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($3);
+            nnode->n_type=_PRINT_FLOAT;
+            nnode->code="PRINTFLOAT";
+            $$=nnode;
+        }
+        /*| IN '(' string ',' arg_list ')' ';'  {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($3);
+            (nnode->v).push_back($5);
+            nnode->n_type=_IN;
+            nnode->code="IN";
+            $$=nnode;
+        }*/
+        |   GETSTRING '(' arg_get_str ')'{
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($3);
+            //(nnode->v).push_back($5);
+            nnode->n_type=_GET_STRING;
+            nnode->code="GETSTRING";
+            $$=nnode;
+        }
+        |   GETFLOAT '(' arg_get_float ')' ';'{
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($3);
+            //(nnode->v).push_back($5);
+            nnode->n_type=_GET_FLOAT;
+            nnode->code="GETFLOAT";
+            $$=nnode;
+        }
+        |   GETINT '(' arg_get_int ')' ';'  {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($3);
+            //(nnode->v).push_back($5);
+            nnode->n_type=_GET_INT;
+            nnode->code="GETINT";
+            $$=nnode;
+        }
+        |   PRINTFLOAT  error {
+                            //printing the error message in func declaration
+
+
+                            /*caught=true;
+                            sprintf (str, "in out()function call");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(14);
+                            
+                            yyclearin;yyerrok;
+                }
+        |   PRINTINT  error {
+                            //printing the error message in func declaration
+
+
+                            /*caught=true;
+                            sprintf (str, "in out()function call");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(14);
+                            
+                            yyclearin;yyerrok;
+                }
+        |   PRINTSTR  error {
+                            //printing the error message in func declaration
+
+
+                            /*caught=true;
+                            sprintf (str, "in out()function call");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(14);
+                            
+                            yyclearin;yyerrok;
+                }
+        |   GETINT  error {
+                            //printing the error message in func declaration
+                            /*caught=true;
+                            sprintf (str, "in in() function call");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(15);
+                            
+                            yyclearin;yyerrok;
+                }
+        |   GETFLOAT  error {
+                            //printing the error message in func declaration
+                            /*caught=true;
+                            sprintf (str, "in in() function call");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(15);
+                            
+                            yyclearin;yyerrok;
+                }
+        |   GETSTRING  error {
+                            //printing the error message in func declaration
+                            /*caught=true;
+                            sprintf (str, "in in() function call");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(15);
+                            
+                            yyclearin;yyerrok;
+                }
+        ;
+
+arg_print_int
+        :   ID  {
+            string s($1);
+            int scp = find_scope(s);
+            if(scp<0){
+                    stringstream ss;
+                    ss<<"no variable " <<  s << " defined in scope" ;
+                    string err_msg = ss.str();
+                    semantic_err=1;semantic_error(err_msg);
+                //cout << "no variable " <<  s << " defined in scope" << endl;
+            }
+            struct AST* nnode=newnode(_VOID, _FACTOR_ID, "Arg : " + s, s);
+            $$ = nnode;
+            DataType d1=_UNKNOWN;
+            d1=find_type_id(s);
+            if(d1 != _INT)
+            {
+                    stringstream ss;
+                    ss<<"Argument to printInt() must be Integer" ;
+                    string err_msg = ss.str();
+                    semantic_err=1;semantic_error(err_msg);
+
+            }
+        }
+        |   NUMBER {
+            //cout << "enter constant number" << endl;
+            struct AST* nnode=newnode();
+            nnode->d_type=_INT;
+            nnode->n_type=_CONSTANT_NUMP;
+            int a=$1;
+            stringstream ss;
+            ss << a;
+            string val = ss.str();
+            //cout << "value_:_" << val << endl;
+            nnode->code = val;
+            nnode->value = val;
+            $$=nnode;
+        }
+        ;
+
+arg_print_float
+        :   ID  {
+            string s($1);
+            int scp = find_scope(s);
+            if(scp<0){
+                    stringstream ss;
+                    ss<<"no variable " <<  s << " defined in scope" ;
+                    string err_msg = ss.str();
+                    semantic_err=1;semantic_error(err_msg);
+                //cout << "no variable " <<  s << " defined in scope" << endl;
+            }
+            struct AST* nnode=newnode(_VOID, _FACTOR_ID, "Arg : " + s, s);
+            $$ = nnode;
+            DataType d1=_UNKNOWN;
+            d1=find_type_id(s);
+            if(d1 != _FLOAT)
+            {
+                    stringstream ss;
+                    ss<<"Argument to printFloat() must be Float" ;
+                    string err_msg = ss.str();
+                    semantic_err=1;semantic_error(err_msg);
+
+            }
+        }
+        |   DECIMAL {
+            struct AST* nnode=newnode();
+            nnode->d_type=_FLOAT;
+            nnode->n_type=_CONSTANT_FLOATP;
+            double a=$1;
+            stringstream ss;
+            ss << a;
+            string val = ss.str();
+            nnode->code = val;
+            nnode->value = val;
+            $$=nnode;
+        }
+        ;
+        
+arg_printstr
+        :   ID  {
+            string s($1);
+            int scp = find_scope(s);
+            if(scp<0){
+                    stringstream ss;
+                    ss<<"no variable " <<  s << " defined in scope" ;
+                    string err_msg = ss.str();
+                    semantic_err=1;semantic_error(err_msg);
+                //cout << "no variable " <<  s << " defined in scope" << endl;
+            }
+            struct AST* nnode=newnode(_VOID, _ARG_ID, "Arg : " + s, s);
+            $$ = nnode;
+            DataType d1=_UNKNOWN;
+            d1=find_type_id(s);
+            if(d1 != _STRING)
+            {
+                    stringstream ss;
+                    ss<<"Argument to printString() must be STRING" ;
+                    string err_msg = ss.str();
+                    semantic_err=1;semantic_error(err_msg);
+
+            }
+        }
+        |   STR_LIT {
+            struct AST* nnode=newnode();
+            nnode->d_type=_STRING;
+            nnode->n_type=_CONSTANT;
+            nnode->code = $1;
+            nnode->value = $1;
+            $$=nnode;
+        }
+        ;
+arg_get_str
+        :   ID {
+            string s($1);
+            int scp = find_scope(s);
+            if(scp<0){
+                    stringstream ss;
+                    ss<<"no variable " <<  s << " defined in scope" ;
+                    string err_msg = ss.str();
+                    semantic_err=1;semantic_error(err_msg);
+                //cout << "no variable " <<  s << " defined in scope" << endl;
+            }
+            struct AST* nnode=newnode(_VOID, _FACTOR_ID, "Arg : " + s, s);
+            $$ = nnode;
+            DataType d1=_UNKNOWN;
+            d1=find_type_id(s);
+            if(d1 != _STRING)
+            {
+                    stringstream ss;
+                    ss<<"Argument to getString() must be string" ;
+                    string err_msg = ss.str();
+                    semantic_err=1;semantic_error(err_msg);
+
+            }
+        }
+        
+        ;
+arg_get_int
+        :   ID {
+            string s($1);
+            int scp = find_scope(s);
+            if(scp<0){
+                    stringstream ss;
+                    ss<<"no variable " <<  s << " defined in scope" ;
+                    string err_msg = ss.str();
+                    semantic_err=1;semantic_error(err_msg);
+                //cout << "no variable " <<  s << " defined in scope" << endl;
+            }
+            struct AST* nnode=newnode(_VOID, _FACTOR_ID, "Arg : " + s, s);
+            $$ = nnode;
+            DataType d1=_UNKNOWN;
+            d1=find_type_id(s);
+            if(d1 != _INT)
+            {
+                    stringstream ss;
+                    ss<<"Argument to getInt() must be Integer" ;
+                    string err_msg = ss.str();
+                    semantic_err=1;semantic_error(err_msg);
+
+            }
+        }
+        ;
+arg_get_float
+        :   ID   {
+            string s($1);
+            int scp = find_scope(s);
+            if(scp<0){
+                    stringstream ss;
+                    ss<<"no variable " <<  s << " defined in scope" ;
+                    string err_msg = ss.str();
+                    semantic_err=1;semantic_error(err_msg);
+                //cout << "no variable " <<  s << " defined in scope" << endl;
+            }
+            struct AST* nnode=newnode(_VOID, _FACTOR_ID, "Arg : " + s, s);
+            $$ = nnode;
+            DataType d1=_UNKNOWN;
+            d1=find_type_id(s);
+            if(d1 != _FLOAT)
+            {
+                    stringstream ss;
+                    ss<<"Argument to getFloat must be Float" ;
+                    string err_msg = ss.str();
+                    semantic_err=1;semantic_error(err_msg);
+
+            }
+        }
+        ;
+        
+labeled_stmnt
+        :   CASE constant colon     {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($2);
+            nnode->n_type=_CASE;
+            nnode->code="CASE_:";
+            $$=nnode;
+        }
+        |   CASE error {
+                            //printing the error message in func declaration
+                            /*caught=true;
+                            sprintf (str, "in case statement");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(16);
+                            
+                            yyclearin;yyerrok;
+                }
+
+        
+        ;
+
+otwise_stmnt
+        :   OTHERWISE colon  stmnt_list {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($3);
+            nnode->n_type=_CASE;
+            nnode->code="OTHERWISE_:";
+            $$=nnode;
+        }
+        |   OTHERWISE error  {
+                            //printing the error message in func declaration
+                            /*caught=true;
+                            sprintf (str, "in otwise statement");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(17);
+                            
+                            yyclearin;yyerrok;
+                }
+        | {
+            struct AST* nnode=newnode(_VOID,_CASE,"No_OTHERWISE","");
+            $$=nnode;
+        }
+        
+        ;
+
+colon
+        :   ':' {
+
+            $$ = newnode(_VOID,_COLON,"COLON","");
+        }
+        |   error {
+                            /*caught=true;
+                            sprintf (str, "Missing ':' ");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            yyerrok;
+                            
+                            
+                }
+        ;
+
+func_compound_stmnt
+        :   '{' _RCB    {
+            cout << "23" << endl;
+            struct AST* nnode=newnode();
+            $$ = nnode;
+        }
+        |   '{' stmnt_list _RCB     {
+            //cout << "enter func comp_stmnt" << endl;
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($2);
+            nnode->n_type=_COMPOUND_STMNT;
+            nnode->code="Compound_statements";
+            $$ = nnode;
+            //cout << "exit func comp_stmnt" << endl;
+        }
+        |   '{' stmnt_list error {
+                            
+                            /*caught=true;
+                            sprintf (str, " ");
+                            eat_to_newline(18);
+                            if(eof==true)
+                            {
+                                if(yylloc.first_line)
+                                    fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str," the end of file");
+                            }
+                            else 
+                            {
+                                if(yylloc.first_line)
+                                    fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                            
+
+
+                            }
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            yyclearin;yyerrok;
+                            
+                            
+                }
+
+        ;
+        
+compound_stmnt
+        :   _LCB _RCB   {
+            //cout << "7" << endl;
+            struct AST* nnode=newnode();
+            $$ = nnode;
+        }
+        |   _LCB stmnt_list _RCB    {
+            //cout << "enter comp_stmnt" << endl;
+            struct AST* nnode = newnode();
+            (nnode->v).push_back($2);
+            nnode->code="Compound_statements";
+            nnode->n_type=_COMPOUND_STMNT;
+            $$ = nnode;
+        }
+        |   _LCB stmnt_list error {
+                            
+                            /*caught=true;
+                            sprintf (str, " ");
+                            eat_to_newline(19);
+                            if(eof==true)
+                            {
+                                if(yylloc.first_line)
+                                    fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str," the end of file");
+                            }
+                            else 
+                            {
+                                if(yylloc.first_line)
+                                    fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                            
+
+
+                            }
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            
+                            yyclearin;yyerrok;
+                            
+                            
+                }
+
+        ;   
+
+_LOB
+        :   '('     {
+            map<string, struct symtb> mm;
+            symbolTable.push_back(mm);
+            scope++;
+        }
+        ;
+
+_ROB
+        :   ')'     {
+            //cout << "enter '}'" << endl;
+            if(symbolTable.size()>0){
+                symbolTable.pop_back();
+            }
+            scope--;
+        }
+        ;
+
+_LCB
+        :   '{'     {
+            map<string, struct symtb> mm;
+            symbolTable.push_back(mm);
+            scope++;
+        }
+        ;
+
+_RCB
+        :   '}'     {
+            //cout << "enter '}'" << endl;
+            if(symbolTable.size()>0){
+                symbolTable.pop_back();
+            }
+            scope--;
+        }
+        ;
+
+condition_stmnt
+        :   IF '(' expr ')' compound_stmnt  {
+            /*expr type must be bool*/
+            if($3->d_type!=_BOOL){
+                //printf("Expression in if must be bool\n");
+                stringstream ss;
+                ss<<"Expression in if must be bool" ;
+                string err_msg = ss.str();
+                semantic_err=1;semantic_error(err_msg);
+            }
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($3);
+            (nnode->v).push_back($5);
+            nnode->n_type=_IF;
+            nnode->code="IF";
+            $$=nnode;
+        }
+        |   IF '(' expr ')' compound_stmnt ELSE compound_stmnt  {
+            /*expr type must be bool*/
+            if($3->d_type!=_BOOL){
+                //printf("Expression in if must be bool\n");
+                stringstream ss;
+                ss<<"Expression in if must be bool" ;
+                string err_msg = ss.str();
+                semantic_err=1;semantic_error(err_msg);
+            }
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($3);
+            (nnode->v).push_back($5);
+            (nnode->v).push_back($7);
+            nnode->n_type=_IFELSE;
+            nnode->code="IF_ELSE";
+            $$=nnode;
+        }
+        /*| SWITCH '(' expr ')' compound_stmnt  {
+            //expr type must be int, float, char, string
+            if(!($3->d_type==_FLOAT || $3->d_type==_INT || $3->d_type==_CHAR || $3->d_type==_STRING)){
+                printf("Expression in switch must be one of int,float,char,string type\n");
+                semantic_err=1;semantic_error(" ");
+            }
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($3);
+            (nnode->v).push_back($5);
+            nnode->n_type=_SWITCH;
+            nnode->code="SWITCH_CASE";
+            $$=nnode;
+        }*/
+        /***********/
+        |   IF '(' expr ')' compound_stmnt elif_list ELSE compound_stmnt {
+            /*expr type must be bool*/
+            if($3->d_type!=_BOOL){
+                //printf("Expression in if must be bool\n");
+                stringstream ss;
+                ss<<"Expression in if must be bool" ;
+                string err_msg = ss.str();
+                semantic_err=1;semantic_error(err_msg);
+            }
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($3);
+            (nnode->v).push_back($5);
+            (nnode->v).push_back($6);
+            (nnode->v).push_back($8);
+            nnode->n_type=_IF_ELSEIF_ELSE;
+            nnode->code="IF_ELIF-ELSE";
+            $$=nnode;
+        }
+
+        |   IF '(' expr ')' compound_stmnt elif_list    {
+            /*expr type must be bool*/
+            if($3->d_type!=_BOOL){
+                //printf("Expression in if must be bool\n");
+                stringstream ss;
+                ss<<"Expression in if must be bool" ;
+                string err_msg = ss.str();
+                semantic_err=1;semantic_error(err_msg);
+            }
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($3);
+            (nnode->v).push_back($5);
+            (nnode->v).push_back($6);
+            nnode->n_type=_IF_ELSEIF;
+            nnode->code="IF_ELIF";
+            $$=nnode;
+        }
+
+        |   SWITCH '(' expr ')'  '{' switch_stmnt_list '}' {
+            /*expr type must be int, float, char, string*/
+            if(!($3->d_type==_FLOAT || $3->d_type==_INT || $3->d_type==_CHAR || $3->d_type==_STRING)){
+                //printf("Expression in switch must be one of int,float,char,string type\n");
+                stringstream ss;
+                ss<<"Expression in switch must be one of int,float,char,string type" ;
+                string err_msg = ss.str();
+                semantic_err=1;semantic_error(err_msg);
+            }
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($3);
+            (nnode->v).push_back($6);
+            nnode->n_type=_SWITCH;
+            nnode->code="SWITCH_CASE";
+            $$=nnode;
+        }
+        |   IF error {
+
+                            /*caught=true;
+                            sprintf (str, "in if statement");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(20);
+                            
+                            yyclearin;yyerrok;      
+            }
+
+        |   SWITCH error{
+
+
+
+                            /*caught=true;
+                            sprintf (str, "in switch statement");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(21);
+                            
+                            yyclearin;yyerrok;      
+            
+        }
+
+        ;
+
+
+elif_list
+        :   elif_list elseifpart {
+            struct AST* nnode=newnode(_VOID, _ELIF_LIST, "ELIF_LIST", "");
+            (nnode->v).push_back($1);
+            (nnode->v).push_back($2);
+            //(nnode->v).push_back($6);
+            $$ = nnode;
+        }
+        |   elseifpart {
+            struct AST* nnode=newnode(_VOID, _ELIF, "ELIF", "");
+            (nnode->v).push_back($1);
+            //(nnode->v).push_back($5);
+            $$ = nnode;
+        }
+        |   ELIF error {
+
+                            /*caught=true;
+                            sprintf (str, "in if statement");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(22);
+                            
+                            yyclearin;yyerrok;      
+            }
+        ;
+
+
+elseifpart
+        :   ELIF '(' expr ')' compound_stmnt{
+            struct AST* nnode=newnode(_VOID, _ELIF_PART, "ELIF_LIST", "");
+            (nnode->v).push_back($3);
+            (nnode->v).push_back($5);
+            //(nnode->v).push_back($6);
+            $$ = nnode;
+        }
+        ;
+
+switch_stmnt
+        :   labeled_stmnt   {
+            struct AST* nnode=newnode(_VOID,_SWITCH,"SWITCH_LABELED_STATEMENT","");
+            (nnode->v).push_back($1);
+            $$ = nnode;
+        }
+        |   stmnt   {
+            struct AST* nnode=newnode(_VOID,_SWITCH,"SWITCH_STATEMENT_STMNT","");
+            (nnode->v).push_back($1);
+            $$ = nnode;
+        }
+        ;
+
+
+
+switch_stmnt_list
+        :   switch_stmnt_list1 otwise_stmnt {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($1);
+            (nnode->v).push_back($2);
+            nnode->code="SWITCH_LABELED_STATEMENT";
+            $$ = nnode;
+        }
+        ;
+
+switch_stmnt_list1
+
+        :   switch_stmnt_list1 switch_stmnt {
+            struct AST* nnode=newnode(_VOID,_SWITCH,"SWITCH_STATEMENT_LIST","");
+            (nnode->v).push_back($1);
+            (nnode->v).push_back($2);
+            $$ = nnode;
+        }
+        |   switch_stmnt
+        {
+            struct AST* nnode=newnode(_VOID,_SWITCH,"SWITCH_STATEMENT","");
+            (nnode->v).push_back($1);
+            $$ = nnode;
+        }
+        ;
+
+        
+loop_stmnt
+        :   WHILE '(' expr ')' compound_stmnt   {
+            if($3->d_type!=_BOOL){
+                //printf("Expression in while must be bool\n");
+                stringstream ss;
+                ss<<"Expression in while must be bool" ;
+                string err_msg = ss.str();
+                semantic_err=1;semantic_error(err_msg);
+            }
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($3);
+            (nnode->v).push_back($5);
+            nnode->n_type=_WHILE;
+            nnode->code="WHILE";
+            $$=nnode;
+        }
+        |   DO compound_stmnt WHILE '(' expr ')' ';'    {
+            if($5->d_type!=_BOOL){
+                //printf("Expression in while must be bool\n");
+                stringstream ss;
+                ss<<"Expression in while must be bool" ;
+                string err_msg = ss.str();
+                semantic_err=1;semantic_error(err_msg);
+            }
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($2);
+            (nnode->v).push_back($5);
+            nnode->n_type=_DOWHILE;
+            nnode->code="DO_WHILE";
+            $$=nnode;
+        }
+        |   FOR '(' expr_stmnt_list semi_comma expr_stmnt_list_cond semi_comma expr_stmnt_list ')' compound_stmnt       /**some grammar mistake check**/ {
+
+            
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($3);
+            (nnode->v).push_back($5);
+            (nnode->v).push_back($7);
+            (nnode->v).push_back($9);
+            nnode->n_type=_FOR;
+            nnode->code="FOR";
+            $$=nnode;
+
+
+
+
+        }
+    
+        |   WHILE '(' expr ')' error {
+                            
+                            /*caught=true;
+                            sprintf (str, "in while body");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(23);
+                            
+                            yyclearin;yyerrok;
+                }
+        |   WHILE error {
+                            
+                            /*caught=true;
+                            sprintf (str, "in while loop");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(24);
+                            
+                            yyclearin;yyerrok;
+                }
+        | DO error {
+                            /*caught=true;
+                            sprintf (str, "in do-while loop");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(25);
+                            
+                            yyclearin;yyerrok;
+
+        }
+        |   FOR error {
+
+                            /*caught=true;
+                            sprintf (str, "in for loop");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(26);
+                            
+                            yyclearin;yyerrok;      
+            }
+            
+        ;
+expr_stmnt_list
+        :   expr_stmnt_list ',' expr {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($1);
+            (nnode->v).push_back($3);
+            nnode->n_type=_EXPR;
+            nnode->code="Expression__list";
+            $$ = nnode;
+            //cout << "exit expr_stmnt" << endl;
+        }
+        |   expr  {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($1);
+            nnode->n_type=_EXPR;
+            nnode->code="Expression";
+            $$ = nnode;
+            //cout << "exit expr_stmnt" << endl;
+        }
+        |   error {
+
+                    $$ = newnode(_VOID,_ERROR,"error","");
+                    eat_to_newline(40);
+                    yyclearin;yyerror;
+        }
+        ;
+/************************************************************************************************************************************************/
+/*****************************************yahan pe dekh liyo as kuch gadbad ho sakta hai*****set_type($3->d_type, s);***************DataType d=expc_datatype($3->d_type);********************/
+/************************************************************************************************************************************************/
+/************************************************************************************************************************************************/
+expr_stmnt_list_cond
+        :   expr_stmnt_list_cond ',' expr {
+
+            if($3->d_type!=_BOOL){
+                //printf("Conditional Expression in for must be bool\n");
+                stringstream ss;
+                ss<<"Conditional Expression in for must be bool" ;
+                string err_msg = ss.str();
+                semantic_err=1;semantic_error(err_msg);
+            }
+
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($1);
+            (nnode->v).push_back($3);
+            nnode->n_type=_EXPR;
+            nnode->code="cond_Expression_list";
+            $$ = nnode;
+            
+        }
+
+        |   expr {
+            if($1->d_type!=_BOOL){
+                //printf("Conditional Expression in for must be bool\n");
+                stringstream ss;
+                ss<<"Conditional Expression in for must be bool" ;
+                string err_msg = ss.str();
+                semantic_err=1;semantic_error(err_msg);
+            }
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($1);
+            nnode->n_type=_EXPR;
+            nnode->code="Expression";
+            $$ = nnode;
+            
+        }
+        
+        | error {
+
+                    $$ = newnode(_VOID,_ERROR,"error","");
+                    eat_to_newline(40);
+                    yyclearin;yyerror;
+        }
+        ;
+
+expr_stmnt
+        :   ';' {
+            struct AST* nnode=newnode();
+            nnode->n_type=_STATEMENT;
+            $$ = nnode;
+        }
+        |   expr semi_comma     {
+            //cout << "enter expr_stmnt" << endl;
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($1);
+            nnode->n_type=_STATEMENT;
+            nnode->code="Expression_statement";
+            $$ = nnode;
+            //cout << "exit expr_stmnt" << endl;
+        }
+        ;
+
+jump_stmnt
+        :   BREAK semi_comma    {
+            struct AST* nnode=newnode();
+            nnode->n_type=_BREAK_STATEMENT;
+            nnode->code="BREAK";
+            $$ = nnode;
+        }
+        |   CONTINUE semi_comma     {
+            struct AST* nnode=newnode();
+            nnode->n_type=_CONTINUE_STATEMENT;
+            nnode->code="CONTINUE";
+            $$ = nnode;
+        }
+        |   RETURN semi_comma   {
+            struct AST* nnode=newnode();
+            nnode->n_type=_RETURN_STATEMENT;
+            nnode->code="RETURN";
+            $$ = nnode;
+            return_v.push_back(_VOID);
+        }
+        |   RETURN  expr semi_comma     {
+            struct AST* nnode=newnode();
+            (nnode->v).push_back($2);
+            nnode->n_type=_RETURNEXP_STATEMENT;
+            nnode->d_type=$2->d_type;
+            nnode->code="RETURN_Expression";
+            $$ = nnode;
+            return_v.push_back($2->d_type);
+        }
+        ;
+        
+exit_stmnt
+        :   EXIT '(' ')' semi_comma     {
+            struct AST* nnode=newnode();
+            nnode->n_type=_STATEMENT;
+            nnode->code="Exit";
+            $$ = nnode;
+        }
+        |   EXIT error  {
+                            //printing the error message in func declaration
+                            /*caught=true;
+                            sprintf (str, "in exit statement");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(27);
+                            
+                            yyclearin;yyerrok;
+                }
+        ;
+        
+constant
+        :   NUMBER  {
+            //cout << "enter constant number" << endl;
+            struct AST* nnode=newnode();
+            nnode->d_type=_INT;
+            nnode->n_type=_CONSTANT;
+            int a=$1;
+            stringstream ss;
+            ss << a;
+            string val = ss.str();
+            //cout << "value_:_" << val << endl;
+            nnode->code = val;
+            nnode->value = val;
+            $$=nnode;
+        }
+        |   DECIMAL     {
+            struct AST* nnode=newnode();
+            nnode->d_type=_FLOAT;
+            nnode->n_type=_CONSTANT;
+            double a=$1;
+            stringstream ss;
+            ss << a;
+            string val = ss.str();
+            nnode->code = val;
+            nnode->value = val;
+            $$=nnode;
+        }
+        |   CHAR_LIT    {
+            struct AST* nnode=newnode();
+            nnode->d_type=_CHAR;
+            nnode->n_type=_CONSTANT;
+            string val(1,$1);
+            nnode->code = val;
+            nnode->value = val;
+            $$=nnode;
+        }
+        |   STR_LIT     {
+            struct AST* nnode=newnode();
+            nnode->d_type=_STRING;
+            nnode->n_type=_CONSTANT;
+            nnode->code = $1;
+            nnode->value = $1;
+            $$=nnode;
+        }
+        |   BOOLEAN     {
+            struct AST* nnode=newnode();
+            nnode->d_type=_BOOL;
+            nnode->n_type=_CONSTANT;
+            if($1==true){
+                nnode->code = "True";
+                nnode->value = "True";
+            }else if($1==false){
+                nnode->code = "False";
+                nnode->value = "False";
+            }
+            $$=nnode;
+        }
+        ;       
+
+param_list
+        :   data_type ID    {
+            //cout << "enter paramlist single" << endl;
+            string s($2);
+            struct AST* nnode = newnode(_VOID, _PARA_DEC, "PARAMETER_DECLARATION", s);
+            (nnode->v).push_back($1);
+            $$=nnode;
+            //cout << "call set_type" << endl;
+            set_type($1->d_type, s);
+            //cout << "return set_type" << endl;
+        }
+        |   param_list ',' data_type ID     {
+            //cout << "enter paramlist double" << endl;
+            string s($4);
+            struct AST* nnode = newnode(_VOID, _PARA_DEC_LIST, "PARAMETER_DECLARATION_LIST", s);
+            (nnode->v).push_back($1);
+            (nnode->v).push_back($3);
+            $$=nnode;
+            set_type($3->d_type, s);
+        }
+        |   error  {
+                            //printing the error message in func declaration
+                            /*caught=true;
+                            sprintf (str, "in parameter list");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(28);
+                            
+                            yyclearin;yyerrok;
+                }
+        
+        ;
+
+ext_dec
+        :   data_type  ID_init_list ';'     {
+            struct AST* nnode = newnode();
+            (nnode->v).push_back($1);
+            (nnode->v).push_back($2);
+            nnode->n_type=_DEC;
+            nnode->code = "DECLARATION";
+            $$=nnode;
+            rec_set_type($1->d_type, $2);
+        }
+
+        |   data_type error {
+                            //printing the error message in  declaration
+                            
+                            /*sprintf (str, "in  declaration ");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(29);
+                            
+                            yyclearin;yyerrok;
+                }
+        |   error {
+                            //printing the error message in  declaration
+                            /*sprintf (str, "in  declaration " );
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(30);
+                            
+                            yyclearin;yyerrok;
+                }
+
+    
+        ;
+
+
+dec     :   data_type  ID_init_list ';' {
+            struct AST* nnode = newnode();
+            (nnode->v).push_back($1);
+            (nnode->v).push_back($2);
+            nnode->n_type=_DEC;
+            nnode->code = "DECLARATION";
+            $$=nnode;
+            rec_set_type($1->d_type, $2);
+        }
+        |   data_type error {
+                            //printing the error message in  declaration
+                            
+                            /*sprintf (str, "in  declaration ");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(31);
+                            
+                            yyclearin;yyerrok;
+                }
+
+    
+        ;
+    
+//*******************************************************************************************************************
+
+        
+ID_init_list
+        :   dec_init    {
+            struct AST* nnode = newnode();
+            (nnode->v).push_back($1);
+            nnode->n_type=_DEC;
+            nnode->code="DECLARATIONS_LIST";
+            $$=nnode;
+        }
+        |   ID_init_list ',' dec_init   {
+            struct AST* nnode = newnode();
+            (nnode->v).push_back($1);
+            (nnode->v).push_back($3);
+            nnode->n_type=_DEC;
+            nnode->code="DECLARATIONS_LIST";
+            $$=nnode;
+        }
+        |   ID_init_list error  {
+                            
+                            //printing the error message in variable declaration
+                            /*sprintf (str, "in declaration");
+                            if(yylloc.first_line)
+                                fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                             
+                            fprintf(stderr, "\n");*/
+                            $$ = newnode(_VOID,_ERROR,"error","");
+                            eat_to_newline(32);
+                            yyclearin;yyerrok;
+                }
+        ;
+    
+dec_init
+        :   ID  {
+            string s($1);
+            struct AST* nnode=newnode(_VOID,_DEC_VAR,s,s);
+            $$=nnode;
+            int i=in_current_scope(s);
+            if(i==1){
+                //cout << "Redefination of variable " << s << endl;
+                stringstream ss;
+                ss<<"Redefination of variable "<< s ;
+                string err_msg = ss.str();
+                semantic_err=1;semantic_error(err_msg);
+            }else{
+                add_to_symtb(_UNKNOWN,scope,s,"");
+            }
+        }
+        |   ID '[' NUMBER ']'   {
+            string s($1);
+            int a=$3;
+            stringstream ss;
+            ss << a;
+            string val = ss.str();
+            struct AST* nnode=newnode(_VOID,_DEC_ARR,s+"["+val+"]",s);
+            $$=nnode;
+            int i=in_current_scope(s);
+            if(i==1){
+                //cout << "Redefination of variable " << s << endl;
+                stringstream ss;
+                ss<<"Redefination of variable " << s ;
+                string err_msg = ss.str();
+                semantic_err=1;semantic_error(err_msg);
+            }else{
+                add_to_symtb(_UNKNOWN,scope,s,"");
+            }
+        }
+        |   ID '=' expr     {
+            string s($1);
+            if($3->d_type==_VOID || $3->d_type==_UNKNOWN){
+                //********************************************************************************************************
+                //********************************************************************************************************
+                //************************yahan id=expr wala problem hai*********************************
+                //********************************************************************************************************
+                //********************************************************************************************************
+                //********************************************************************************************************
+                //printf("ID=expr, expr must not be void");
+                /*stringstream ss;
+                ss<<"ID=expr, expr must not be void" ;
+                string err_msg = ss.str();
+                semantic_error(err_msg);*/
+            }
+            DataType d=expc_datatype($3->d_type);
+            struct AST* nnode=newnode(d,_DECVAR_EQ,s+":=",s);
+            (nnode->v).push_back($3);
+            $$=nnode;
+            int i=in_current_scope(s);
+            if(i==1){
+                //cout << "Redefination of variable " << s << endl;
+                stringstream ss;
+                ss<<"Redefination of variable " << s ;
+                string err_msg = ss.str();
+                semantic_err=1;semantic_error(err_msg);
+            }else{
+                add_to_symtb(_UNKNOWN,scope,s,"");
+            }
+        }
+        |   ID '[' error ']'    {
+                                    //printing the error message in array initializer declaration
+                                    /*caught=true;
+                            sprintf (str, " Error in array index ");
+                                    if(yylloc.first_line)
+                                        fprintf(stderr, "%d.%d - %d.%d error: %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,str,yytext);
+                                     
+                                    fprintf(stderr, "\n");                                     
+                            caught=false;*/
+                                    $$ = newnode(_VOID,_ERROR,"error","");
+                                    eat_to_newline(33);
+                                    //cout <<"yahn aaya"<<endl;
+                                    yyclearin;yyerrok;
+                                }
+        
+        ;
+
+        
+        
+
+
+%%
+
+//dot_code+="\t" + val1 +  node->code  + " -> " + val2 + (*it)->code + ";\n";
+
+int node_no=1;
+string dot_code="digraph G {\n";
+
+void create_dot_graph(struct AST* node, string lab){
+    vector<struct AST*>::iterator it;
+    
+
+    int c_num=1;
+    if(node!=NULL){
+        for(it=(node->v).begin();it!=(node->v).end();++it){
+            stringstream s22;
+            s22 << c_num;
+            string val22=s22.str(); //val22 has c_num
+            dot_code+="\t" + std::string("\"") + lab + std::string("\n") + node->code + std::string("\"") +  " -> " + std::string("\"") + lab + "." + val22 + std::string("\n") + (*it)->code + std::string("\"") + ";\n";
+            node_no+=1;
+            create_dot_graph(*it,lab + "." + val22 );
+            c_num++;
+        }
+    }
+    return;
+}
+
+/****************************************************************************************************/
+/****************************************************************************************************/
+/****************************************************************************************************/
+string cgen(struct AST* n);
+string elifgen(struct AST* n, string nextLabel);
+//vector<map<string, string> cgenTable;
+//map<string, string>cgenm;
+//cgenTable.push_back(cgenm);
+
+static int label=0;
+int num_para=0;
+
+string getNewReg()
+{
+    static int count=0;
+    stringstream ss;
+    ss<<++count;
+    
+    return string("r"+ss.str());
+}
+
+string genNewLabel()
+{
+    
+    stringstream ss;
+    ss<<++label;
+    return string("label"+ss.str()+":");
+}
+
+string get_cur_label(){
+    stringstream ss;
+    ss<<label;
+    return string("label"+ss.str()+":");
+}
+
+
+string eliflistgen(struct AST* n, string finalLabel)
+{
+        if(n->n_type==_ELIF_LIST)
+        {
+            //string newelifLabel=genNewLabel();
+            //cout<<eliflabel<<endl;
+            eliflistgen(n->v[0],finalLabel);
+            //string newLabel2=genNewLabel();
+            elifgen(n->v[1],finalLabel);
+        }
+        else if(n->n_type==_ELIF)
+        {
+            elifgen(n->v[0],finalLabel);
+        } 
+
+    return "";
+}
+
+void global_vars()
+{
+    map<string, struct cgenEntry>::iterator it1;
+    for(it1=global_var.begin(); it1!=global_var.end(); ++it1){
+        if((it1->second).value==""){
+            cout << it1->first << (it1->second).scope << " = 0" << endl; 
+        }else{
+            cout << it1->first << (it1->second).scope << " = " << (it1->second).value << endl;
+        }
+    }
+}
+
+string elifgen(struct AST* n, string finalLabel)
+{
+        cout<<get_cur_label()<<endl;
+        string r1=cgen(n->v[0]);
+        string trueLabel = genNewLabel();
+        
+        
+        cout<<"if "<<r1<<" goto "<<trueLabel<<endl;
+        cout<<"goto "<<genNewLabel()<<endl;
+        cout<<trueLabel<<endl;
+        cgen((n->v)[1]);
+        cout<< "goto "<<finalLabel<<endl;
+        return "";
+}
+
+string cgen(struct AST* n)
+{
+    if(n==NULL) 
+    {
+        return "";
+    }
+    else if(n->n_type == _MAIN )
+    {
+        tmp_vars.clear();
+        num_para=0;
+        var_line_no=0;
+        string s="main";
+        cout<<s<<": funcbegin"<<endl;
+        cout << "ParamsNum: " << num_para << endl;
+        global_vars();
+        cgen(n->v[0]);
+        cout<<"funcend : " << tmp_vars.size() <<endl;
+        add_var_list(s);
+        tmp_vars.clear();
+        var_line_no=0;
+        return "";
+
+    }
+    else if(n->n_type==_MAIN_PARAM)
+    {
+        tmp_vars.clear();
+        num_para=0;
+        var_line_no=0;
+        string s="main";
+        cout<<s<<": funcbegin"<<endl;
+        cgen(n->v[0]);
+        cout << "ParamsNum: " << num_para << endl;
+        global_vars();
+        cgen(n->v[1]);
+        cout<<"funcend : " << tmp_vars.size() <<endl;
+        add_var_list(s);
+        tmp_vars.clear();
+        var_line_no=0;
+        return "";
+    }
+    else if(n->n_type == _FUNCTION){
+
+        string funcLabel=genNewLabel();
+        cout<<funcLabel<<endl;
+        cgen(n->v[0]);
+        return "";
+
+    }
+    else if(n->n_type == _COMPOUND_STMNT)
+    {
+        map<string, struct cgenEntry> tmp;
+        scope_code++;
+        cgenTable.push_back(tmp);
+        if((n->v).size()==1) cgen((n->v)[0]);
+        cgenTable.pop_back();
+        scope_code--;
+        return "";
+    }
+    else if(n->n_type == _DEC_VAR)
+    {
+        /*vector<map<string, struct cgenEntry> >::iterator tmp;
+        tmp=cgenTable.back();*/
+        struct cgenEntry a;
+        a.scope = scope_code;
+        a.value = "";
+        if(scope_code==0){
+            global_var.insert(pair<string, struct cgenEntry>(n->value, a));
+        }else{
+            cgenTable.back().insert(pair<string, struct cgenEntry>(n->value, a));   
+        }
+        return "";
+    }
+    else if(n->n_type == _DECVAR_EQ)
+    {
+        string R1=cgen(n->v[0]);
+        string R2=n->value;
+        cout << R2<<scope_code << " = " << R1 << endl;
+        /*vector< map < string, struct cgenEntry> >::iterator tmp;
+        tmp=cgenTable.back();*/
+        struct cgenEntry a;
+        a.scope = scope_code;
+        a.value = R1;
+        if(scope_code==0){
+            global_var.insert(pair<string, struct cgenEntry>(n->value, a));
+        }else{
+            cgenTable.back().insert(pair<string, struct cgenEntry>(n->value, a));   
+        }
+        return "";
+    }
+    else if(n->n_type == _IF)
+    {
+        string r1=cgen((n->v)[0]);
+        string trueLabel = genNewLabel();
+        //string falseLabel = genNewLabel();
+        string nextLabel = genNewLabel();
+        cout<<"if "<<r1<<" goto "<<trueLabel<<endl;
+        //cout<<"goto "<<falseLabel<<endl;
+        cout<<trueLabel<<endl;
+        cgen((n->v)[1]);
+        cout<< "goto "<<nextLabel<<endl;
+        //string newReg=getNewReg();
+        //cout<<falseLabel<<endl; 
+        cout<< nextLabel<<endl;
+        return "";
+    }
+    else if(n->n_type == _IFELSE)
+    {
+        string r1=cgen((n->v)[0]);
+        string trueLabel = genNewLabel();
+        string falseLabel = genNewLabel();
+        string nextLabel = genNewLabel();
+        cout<<"if "<<r1<<" goto "<<trueLabel<<endl;
+        cout<<"goto "<<falseLabel<<endl;
+        cout<<trueLabel<<endl;
+        cgen((n->v)[1]);
+        cout<< "goto "<<nextLabel<<endl;
+        //string newReg=getNewReg();
+        cout<<falseLabel<<endl; 
+        cgen(n->v[2]);
+        cout<< nextLabel<<endl;
+        return "";
+    }
+    else if(n->n_type == _IF_ELSEIF_ELSE)
+    {
+        string r1=cgen((n->v)[0]);
+        string trueLabel = genNewLabel();
+        //string falseLabel = genNewLabel();
+        string finalLabel = genNewLabel();
+        string eliflabel = genNewLabel();
+        cout<<"if "<<r1<<" goto "<<trueLabel<<endl;
+        cout<<"goto "<<eliflabel<<endl;
+        cout<<trueLabel<<endl;
+        cgen((n->v)[1]);
+        cout<< "goto "<<finalLabel<<endl;
+        eliflistgen(n->v[2],finalLabel);
+        
+        //cout<<falseLabel<<endl; 
+        cout<<get_cur_label()<<endl;
+        cgen(n->v[3]);
+        cout<< finalLabel<<endl;
+        return "";
+    }
+    else if(n->n_type == _IF_ELSEIF)
+    {
+        string r1=cgen((n->v)[0]);
+        string trueLabel = genNewLabel();
+        //string falseLabel = genNewLabel();
+        string finalLabel = genNewLabel();
+        string eliflabel = genNewLabel();
+        cout<<"if "<<r1<<" goto "<<trueLabel<<endl;
+        cout<<"goto "<<eliflabel<<endl;
+        cout<<trueLabel<<endl;
+        cgen((n->v)[1]);
+        cout<< "goto "<<finalLabel<<endl;
+        eliflistgen(n->v[2],finalLabel);
+        
+        //cout<<falseLabel<<endl; 
+        cout<<get_cur_label()<<endl;
+        
+        cout<< finalLabel<<endl;
+        return "";
+    }
+    else if(n->n_type == _WHILE)
+    {
+        string entryLabel = genNewLabel();
+        cout<<entryLabel<<endl;
+        string r1=cgen((n->v)[0]);
+        string bodyLabel = genNewLabel();
+        string exitLabel = genNewLabel();
+        cout<<"if "<<r1<<" goto "<<bodyLabel<<endl;
+        cout<<"goto "<<exitLabel<<endl;
+        cout<<bodyLabel<<endl;
+        cgen((n->v)[1]);
+        cout<<"goto "<<entryLabel<<endl;
+        cout<<exitLabel<<endl;
+        return "";
+    }
+    else if(n->n_type == _DOWHILE)
+    {
+        
+        string bodyLabel = genNewLabel();
+        
+        cout<<bodyLabel<<endl;
+        cgen((n->v)[0]);
+        /*string entryLabel = genNewLabel();
+        cout<<entryLabel<<endl;*/
+        string r1=cgen((n->v)[1]);
+        string exitLabel = genNewLabel();
+        cout<<"if "<<r1<<" goto "<<bodyLabel<<endl;
+        cout<<"goto "<<exitLabel<<endl;
+
+        cout<<exitLabel<<endl;
+        return "";
+    }
+    else if(n->n_type == _FACTOR_ID)
+    {
+        string s = n->value;
+        int scope_count=0;
+        map<string, struct cgenEntry>::iterator it;
+        vector< map < string, struct cgenEntry > >::reverse_iterator it1;
+        for(it1=cgenTable.rbegin();it1!=cgenTable.rend();++it1){
+            it=it1->find(s);
+            if(it!=it1->end()){
+                scope_count = (it->second).scope;
+                break;
+            }
+        }
+        stringstream ss;
+        ss<<scope_count;
+        add_in_tmp_var(n->value+ss.str());
+        return n->value+ss.str();
+    }
+    else if(n->n_type == _FACTOR_CONS)
+    {
+        string reg1=getNewReg();
+        string reg2=getNewReg();
+        if(n->value=="True")
+        {
+            cout<<reg1 << " = 0"<<endl;
+            cout<<reg2<<" = "<<reg1<<" == 0"<<endl;
+            add_in_tmp_var(reg1);
+            add_in_tmp_var(reg2);
+            return reg2;
+        }
+        else if(n->value=="False")
+        {
+            cout<<reg1 << " = 1"<<endl;
+            cout<<reg2<<" = "<<reg1<<" == 0"<<endl;
+
+            add_in_tmp_var(reg1);
+            add_in_tmp_var(reg2);
+            return reg2;
+        }
+        else
+            return n->value;
+    }
+    else if(n->n_type==FUNC_CALL)
+    {
+        string s=n->value;
+        cout << "call " << s << endl;
+        string newReg = getNewReg();
+        add_in_tmp_var(newReg);
+        cout << newReg << " = v0" << endl;
+        return newReg;
+
+    }
+    else if(n->n_type==_ARG_FUNC_CALL)
+    {
+        string s=n->value;
+        cgen(n->v[0]);
+        cout << "call " << s << endl;
+        string newReg = getNewReg();
+        add_in_tmp_var(newReg);
+        cout << newReg << " = v0" << endl;
+        return newReg;
+    }
+    else if(n->n_type==_ARG_CONS)
+    {
+        cout << "pushArgs " << n->value << endl;
+        return "";
+    }
+    else if(n->n_type==_ARG_ID)
+    {
+        string s = n->value;
+        int scope_count=0;
+        map<string, struct cgenEntry>::iterator it;
+        vector< map < string, struct cgenEntry > >::reverse_iterator it1;
+        for(it1=cgenTable.rbegin();it1!=cgenTable.rend();++it1){
+            it=it1->find(s);
+            if(it!=it1->end()){
+                scope_count = (it->second).scope;
+                break;
+            }
+        }
+        stringstream ss;
+        ss<<scope_count;
+        add_in_tmp_var(n->value+ss.str());
+        cout << "pushArgs " << n->value+ss.str() << endl;
+        return "";
+    }
+    else if(n->n_type == _EXPR_MICROVAL)
+    {
+        
+        return cgen(n->v[0]);
+
+        
+    }
+    else if (n->n_type == _EXPR_BRACKET)
+    {
+        if((n->v[0])->n_type==_EXPR_MICROVAL){
+            cout << cgen(n->v[0]) << endl;
+            return "";
+        }else{
+            return cgen(n->v[0]);
+
+        }
+        
+
+    }
+    else if(n->n_type == _EXPR_MICRO_OP)
+    {
+        string r1=cgen(n->v[0]);
+        string op=n->v[1]->value;
+        string r2=cgen(n->v[2]);
+        string newReg=getNewReg();
+        if(op=="=")
+            cout<<r1<<" "<<op<<" "<<r2<<endl;
+        else
+            cout<<newReg<<" = "<<r1<<" "<<op<<" "<<r2<<endl;
+        add_in_tmp_var(newReg);
+        return newReg;
+
+    }
+    else if(n->n_type == _EXPR_EXPR_OP)
+    {
+        string r1=cgen(n->v[0]);
+        string op=n->v[1]->value;
+        string r2=cgen(n->v[2]);
+        string newReg=getNewReg();
+        if(op=="=")
+            cout<<r1<<" "<<op<<" "<<r2<<endl;
+        else
+            cout<<newReg<<" = "<<r1<<" "<<op<<" "<<r2<<endl;
+        add_in_tmp_var(newReg);
+        return newReg;
+
+    }
+    else if(n->n_type == _EXPR_MICRO_ASS_OP)
+    {
+        string r1=cgen(n->v[0]);
+        string op=n->v[1]->value;
+        string r2=cgen(n->v[2]);
+        cout<<r1<<" "<<op<<" "<<r2<<endl;
+        return "";
+    }
+    else if(n->n_type == _EXPR_UNARY)
+    {
+        string r1=cgen(n->v[1]);
+        
+        string op=n->v[0]->value;
+        string newReg=getNewReg();
+        if(op=="~")
+        {
+            cout<<newReg<<" = 0 - "<<r1<<endl;
+        }
+        else if(op=="!")
+        {
+            cout<<newReg<<" = !"<<r1<<endl;
+        }
+        add_in_tmp_var(newReg);
+        return newReg;
+    }
+    else if(n->n_type == _FUNCTION_DEF)
+    {
+        string s=n->value;
+        num_para=0;
+        tmp_vars.clear();
+        var_line_no=0;
+        cout<<s<<": funcbegin"<<endl;
+        //cout<<"funcbegin "<<endl;
+        cout << "ParamsNum: " << num_para << endl;
+        global_vars();
+        cgen(n->v[1]);
+        
+        cout<<"funcend : " << tmp_vars.size() <<endl;
+        add_var_list(s);
+        tmp_vars.clear();
+        var_line_no=0;
+    }
+
+    else if(n->n_type==_FUNCTION_DEF_VOID)
+    {
+        string s=n->value;
+        num_para=0;
+        tmp_vars.clear();
+        var_line_no=0;
+        cout<<s<<": funcbegin"<<endl;
+        //cout<<"funcbegin "<<endl;
+        cout << "ParamsNum: " << num_para << endl;
+        global_vars();
+        cgen(n->v[0]);
+        
+        cout<<"funcend : " << tmp_vars.size() <<endl;
+        add_var_list(s);
+        tmp_vars.clear();
+        var_line_no=0;
+    }
+    else if(n->n_type==_FUNCTION_DEF_PARAM)
+    {
+        string s=n->value;
+        num_para=0;
+        tmp_vars.clear();
+        var_line_no=0;
+        cout<<s<<": funcbegin"<<endl;
+        //cout<<"funcbegin "<<endl;
+        cgen(n->v[1]);
+        cout << "ParamsNum: " << num_para << endl;
+        global_vars();
+        cgen(n->v[2]);
+        
+        cout<<"funcend : " << tmp_vars.size() <<endl;
+        add_var_list(s);
+        tmp_vars.clear();
+        var_line_no=0;
+    }else if(n->n_type==_FUNCTION_DEF_PARAM_VOID)
+    {
+        string s=n->value;
+        num_para=0;
+        tmp_vars.clear();
+        var_line_no=0;
+        cout<<s<<": funcbegin"<<endl;
+        //cout<<"funcbegin "<<endl;
+        cgen(n->v[0]);
+        cout << "ParamsNum: " << num_para << endl;
+        global_vars();
+        cgen(n->v[1]);
+        
+        cout<<"funcend : " << tmp_vars.size() <<endl;
+        add_var_list(s);
+        tmp_vars.clear();
+        var_line_no=0;
+    }
+    else if(n->n_type==_PARA_DEC)
+    {
+        struct cgenEntry a;
+        a.scope = scope_code+1;
+        cgenTable.back().insert(pair<string, struct cgenEntry>(n->value, a));
+        stringstream ss;
+        ss << scope_code+1;
+        add_in_tmp_var(n->value+ss.str());
+        num_para++;
+        return "";
+    }
+    else if(n->n_type==_PARA_DEC_LIST)
+    {
+        cgen(n->v[0]);
+        struct cgenEntry a;
+        a.scope = scope_code+1;
+        cgenTable.back().insert(pair<string, struct cgenEntry>(n->value, a));
+        stringstream ss;
+        ss << scope_code+1;
+        add_in_tmp_var(n->value+ss.str());
+        num_para++;
+        return "";
+    }
+    else if(n->n_type==_RETURN_STATEMENT)
+    {   
+        cout << "v0 = 0" << endl;
+        cout << "return" << endl;
+        return "";
+    }
+    else if(n->n_type==_RETURNEXP_STATEMENT)
+    {
+        string R1=cgen(n->v[0]);
+        cout << "v0 = " << R1 << endl;
+        cout << "return" << endl;
+        return "";
+    }
+    else if(n->n_type==_CONSTANT_NUMP)
+    {
+        return n->value;
+    }
+    else if(n->n_type==_CONSTANT_FLOATP)
+    {
+        return n->value;
+    }
+    else if(n->n_type==_PRINT_STRING)
+    {
+        cout << "outstr " << (n->v[0])->value << endl;
+        return "";
+    }
+    else if(n->n_type==_PRINT_INT)
+    {
+        string r1 = cgen(n->v[0]);
+        cout << "outint " << r1 << endl;
+        return "";
+    }
+    else if(n->n_type==_PRINT_FLOAT)
+    {
+        string r1 = cgen(n->v[0]);
+        cout << "outfloat " << r1 << endl;
+        return "";
+    }
+    else if(n->n_type==_GET_STRING)
+    {
+        string r1 = cgen(n->v[0]);
+        cout << "instr " << r1 << endl;
+        return "";
+    }
+    else if(n->n_type==_GET_INT)
+    {
+        string r1 = cgen(n->v[0]);
+        cout << "inint " << r1 << endl;
+        return "";
+    }
+    else if(n->n_type==_GET_FLOAT)
+    {
+        string r1 = cgen(n->v[0]);
+        cout << "infloat " << r1 << endl;
+        return "";
+    }
+    else
+    {
+        
+        for (int i = 0; i < (n->v).size(); ++i)
+        {
+            cgen((n->v)[i]);
+        }
+        return "";
+    }
+}
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+
+
+
+
+
+
+main ()
+{
+    //**************************************************************************
+    
+    FILE *myfile = fopen("input.txt", "r");
+    
+    
+    
+    yyin = myfile;
+    //cout << "in main" << endl;
+    map<string, struct symtb> mm;
+    symbolTable.push_back(mm);
+    //cout << "size initially " << symbolTable.size() << endl;
+    cout << "doing parse" << endl;
+    do {
+        yyparse();
+    } while (!feof(yyin));
+    //****************************************************************************
+    //yyparse();            // Start parsing
+    if(errcount)            // If error occured
+                printf("\n Result: %d syntax errors. Input rejected \n",errcount);
+    
+    printf("\n");
+    
+    if(semantic_err)
+        printf("Your code has semantic errors\n");
+
+    cout << "Root Address: " << root << endl;
+    
+
+    if(!(semantic_err==1 || syntactic_err==1)){
+        create_dot_graph(root, "1");
+        
+        dot_code+="}";
+        ofstream out("sample.dot");
+        out<<dot_code;
+        out.close();
+
+        cout<<"Generating the Syntax tree.\n";
+
+        system("dot -Tpng sample.dot  > sample.png");
+        cout<<"Syntax tree generated.\n";
+    }
+
+    map<string, struct cgenEntry>cgenm;
+    cgenTable.push_back(cgenm);
+
+    cgen(root);
+
+    FILE *ftmp;
+    ftmp = fopen("tmpvar.txt","w");
+    map<string, int>::iterator fit;
+    int sz;
+    for(mit=functionTable.begin();mit!=functionTable.end();++mit){
+        sz=(mit->second).var_list.size();
+        fprintf(ftmp, "\n%s:%d\n", (mit->first).c_str(), sz);
+        for(fit=(mit->second).var_list.begin(); fit!=(mit->second).var_list.end(); ++fit ){
+            fprintf(ftmp, "%s=%d\n", (fit->first).c_str(), fit->second);
+        }
+    }
+}
+
+
+void semantic_error(string sem_err)
+{
+
+    
+    fprintf(stderr, "Line no - %d :semantic error, %s",yylloc.first_line,&sem_err[0]);
+    fprintf(stderr, "\n");
+
+
+}
+
+
+int yyerror(const char *s)
+{
+    errcount++;
+    syntactic_err=1;
+        if(caught)
+        {
+            fprintf(stderr, "%s", s);   
+            fprintf(stderr, "\n");
+        }
+        else{
+        sprintf(str," ");
+        //fprintf(stderr, "%d.%d - %d.%d : %s before %s ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,s,yytext);
+        fprintf(stderr, "%d.%d - %d.%d : %s  ", yylloc.first_line, yylloc.first_column,yylloc.last_line, yylloc.last_column,s);
+        fprintf(stderr, "\n");
+        }
+    if(eof)
+        exit(1);
+    
+                    
+    
+}
+
+
+
+
+
+
+                //********************************************************************************************************
+                //********************************************************************************************************
+                //************************ array reference of a variable ,function wala sara rehta hai type checking******
+                //********************************************************************************************************
+                //********************************************************************************************************
+                //********************************************************************************************************
+
+
+/************************************part2.l****************************************/
+//*************************************************************************************/
+
+
+
+L           [a-zA-Z_]
+
+%{
+#include <stdio.h>
+#include<math.h>
+#include<stdlib.h>
+#include<stdbool.h>
+#include<string.h>
+#include<iostream>
+#include "codegen.tab.h"
+
+
+using namespace std;
+%}
+%%
+[i][f] {return(IF);}
+[g][o][t][o] {return(GOTO);}
+"v0"        {return(V0);}
+"funcend :"     {return(FUNCEND);}
+"funcbegin"     {return(FUNCBEGIN);}
+"return"    {return(RETURN);}
+"pushArgs"  {return(PUSHARGS);}
+"call"      {return(CALL);}
+"ParamsNum:"    {return(PARAMSNUM);}
+"outint"    {return(OUTINT);}
+"inint"     {return(ININT);}
+"outfloat"  {return(OUTFLOAT);}
+"infloat"       {return(INFLOAT);}
+"outstr"    {return(OUTSTRING);}
+"instr"     {return(INSTRING);}
+
+[a-zA-z]+[a-zA-z0-9]* {return(ID);}
+
+
+"==" {return(BINARY_OPERATORS);};
+[-+*/<>] {cout<<"binary"<<endl; return(BINARY_OPERATORS);}
+[0-9]+ {return(NUM);}
+[=] {return(EQ);}
+[&] {return(ANDP);}
+[a-zA-z]+[a-zA-z0-9]*[:] {return(LABEL);}
+L?\"(\\.|[^\\"])*\" {  return(STR_LIT); }
+(.|\n)
+%%
+int yywrap()
+{
+    return 1;
+}
+
+
+
+/************************************codegen.y***************************************/
+
+/************************************************************************************/
+
+
+
+%{
+#include <iostream>
+#include <stdio.h>
+#include <string.h>
+#include <map>
+#include <fstream>
+#include <vector>
+#include <sstream>
+using namespace std;
+//map <string,int> varmap;
+
+map<string, map< string, int > >varmap_func;
+map<string, int>paranum;
+
+map<string, map< string, int > >::iterator vit;
+map<string, int>::iterator pit;
+vector<string> cur_function;
+
+//int lookup(char *);
+int var_indx(char *);
+int yylex(void);
+#define YYSTYPE char *
+void yyerror (char const *s) {
+        //fprintf (stderr, "%s\n", s);
+ }
+FILE *temp;
+extern char *yytext;
+int labelcount=0;
+int res_str_count=0;
+
+string cur_func;
+int para_num;
+int local_num;
+
+string genLabel();
+string genres_str();
+
+%}
+
+
+
+%start lines
+%token  NUM ID EQ FUNCBEGIN FUNCEND PARAMSNUM RETURN PUSHARGS V0 STR_LIT
+%token BINARY_OPERATORS
+%token  PLUS    MINUS   TIMES   DIVIDE  
+%token SMALLER SMALLEREQ GREATER GREATEREQ EQEQ 
+%token IF GOTO
+%token LABEL PARAM CALL COMMA LEFTSQPAR RIGSQPAR
+%token STAR ANDP  UNARY_OPS PUSH
+%token OUTSTRING INSTRING OUTINT ININT OUTFLOAT  INFLOAT
+%%
+
+lines:   lines line /* do nothing */ 
+        | line
+            ;
+
+line:       binary  
+            | unary 
+            | copy 
+            | conditional_jump 
+            | unconditional_jump 
+            | function_call 
+            | indexed_copy
+            | address_pointer_assignment 
+            | label1
+            | fun_begin
+            | para_num
+            | fun_end
+            | return_stmt
+            | pushargs
+            | save_to_v0
+            | load_from_v0
+            | outint
+            | inint
+            | outfloat
+            | infloat
+            | outstring
+            | instring  
+            ;
+
+
+
+inint
+    :   ININT identifier    {
+        int k=var_indx($2);
+        k+=3;
+        fprintf(temp, "li $v0 5\n" );
+        fprintf(temp, "syscall\n" );
+        fprintf(temp,"sw $v0 %d($t0)\n",4*k );
+    }
+    ;
+infloat
+    :   INFLOAT identifier
+    ;
+instring
+    :   INSTRING identifier
+    ;
+
+outint
+    :   OUTINT identifiernum {
+            int k=var_indx($2);
+            k+=3;
+            fprintf(temp, "li $v0 1\n" );
+            if(k<=2){
+                fprintf(temp,"li $a0 %s\n",$2);
+            }else{
+                fprintf(temp,"lw $a0 %d($t0)\n",4*k );
+            }
+            fprintf(temp, "syscall\n" );
+    }
+    ;
+outfloat
+    :   OUTFLOAT identifiernum
+    ;
+outstring
+    :   OUTSTRING  STR_LIT {
+
+        fprintf(temp, ".data\n");
+        cout << $2;
+        string newvar=genres_str();
+        fprintf(temp, "%s: .asciiz %s\n",&newvar[0],yytext );
+        fprintf(temp, ".text\n" );
+        fprintf(temp, "li $v0 4\n" );
+        fprintf(temp, "la $a0 %s\n",&newvar[0] );
+        fprintf(temp, "syscall\n" );
+    }
+    ;
+
+str_l : STR_LIT{
+    cout << "3892ur\n";  
+    $$=strdup(yytext);
+    cout << "3\n";
+    }
+    ;
+fun_begin:  label FUNCBEGIN {
+                cout << "1\n";
+                fprintf(temp,"%s\n",$1);
+                string s($1);
+                int l=s.length();
+                string s1 = s.substr(0,l-1);
+                cur_func=s1;
+                cur_function.push_back(s1);
+                cout << "2\n";
+            }
+            ;
+
+save_to_v0: V0 EQ identifiernum {
+            int k=var_indx($3);
+            k+=3;
+            if(k<=2){
+                fprintf(temp,"li $a0 %s\n",$3);
+            }else{
+                fprintf(temp,"lw $a0 %d($t0)\n",4*k );
+            }
+            fprintf(temp, "move $v0 $a0\n" );
+        }
+        ;
+
+load_from_v0:   identifier EQ V0 {
+            int k=var_indx($1);
+            k+=3;
+            fprintf(temp,"sw $v0 %d($t0)\n",4*k );
+            fprintf(temp,"sw $v0 8($t0)\n" );
+            /*fprintf(temp,"move $a0 $v0\n" );
+            fprintf(temp,"li  $v0 1\n" );
+            fprintf(temp,"syscall\n" );*/
+        }
+        ;
+fun_end:    FUNCEND num {
+                cout << "funcend\n";
+                fprintf(temp,"lw $ra 4($t0)\n");
+                int k = local_num + 4;
+                fprintf(temp,"addiu $sp $sp %d\n",4*k );
+                fprintf(temp,"jr $ra\n");
+                cur_function.pop_back();
+            }
+            ;
+
+para_num:   PARAMSNUM num {
+                para_num = atoi($2);
+                pit=paranum.find(cur_function.back());
+                if(pit!=paranum.end()){
+                    local_num = pit->second;
+                }
+                int k = (local_num - para_num) + 3;
+                fprintf(temp,"addiu $sp $sp %d\n",-4*k );
+                fprintf(temp,"move $t0 $sp\n");
+                fprintf(temp,"sw $t0 0($sp)\n");
+                fprintf(temp,"sw $ra 4($t0)\n");
+                fprintf(temp,"li $a0 0\n");
+                fprintf(temp,"sw $a0 8($t0)\n");
+                fprintf(temp,"addiu $sp $sp %d\n",-4 );
+            }
+            ;
+ 
+return_stmt:    RETURN {
+                            fprintf(temp,"lw $ra 4($t0)\n");
+                            int k = local_num + 4;
+                            fprintf(temp,"addiu $sp $sp %d\n",4*k );
+                            fprintf(temp,"jr $ra\n");
+                }
+                ;
+
+binary:     identifier EQ identifiernum binary_ops identifiernum {
+                        
+                        if(strcmp($4,"+")==0)
+                        {
+
+                            //int k=lookup($3);
+                            int k=var_indx($3);
+                            k+=3;
+                            if(k<=2)
+                            {
+                                fprintf(temp,"li $a0 %s\n",$3);
+                            }
+                            else
+                            {
+                                fprintf(temp,"lw $a0 %d($t0)\n",4*k );
+                            }
+
+                            //pushing into stack first arg
+                            fprintf(temp,"sw $a0 0($sp)\n");
+                            fprintf(temp,"addiu $sp $sp -4\n");
+
+
+                            //k=lookup($5);
+                            k=var_indx($5);
+                            k+=3;
+                            if(k<=2)
+                            {
+                                fprintf(temp,"li $a0 %s\n",$5);
+                            }
+                            else
+                            {
+                                fprintf(temp,"lw $a0 %d($t0)\n",4*k );
+                            }
+                            fprintf(temp,"lw $t1 4($sp)\n");
+                            fprintf(temp,"addiu $sp $sp 4\n");
+                            fprintf(temp,"add $a0 $a0 $t1\n");
+                            //k=lookup($1);
+                            k=var_indx($1);
+                            k+=3;
+                            fprintf(temp,"sw $a0 %d($t0)\n",4*k );
+                                    
+                        }else if(strcmp($4,"-")==0){
+                            cout<<"MINUS"<<endl;
+                            //int k=lookup($3);
+                            int k=var_indx($3);
+                            k+=3;
+                            if(k<=2)
+                            {
+                                fprintf(temp,"li $a0 %s\n",$3);
+                            }
+                            else
+                            {
+                                fprintf(temp,"lw $a0 %d($t0)\n",4*k );
+                            }
+
+                            //pushing into stack first arg
+                            fprintf(temp,"sw $a0 0($sp)\n");
+                            fprintf(temp,"addiu $sp $sp -4\n");
+
+
+                            //k=lookup($5);
+                            k=var_indx($5);
+                            k+=3;
+                            if(k<=2)
+                            {
+                                fprintf(temp,"li $a0 %s\n",$5);
+                            }
+                            else
+                            {
+                                fprintf(temp,"lw $a0 %d($t0)\n",4*k );
+                            }
+                            fprintf(temp,"lw $t1 4($sp)\n");
+                            fprintf(temp,"addiu $sp $sp 4\n");
+                            fprintf(temp,"sub $a0 $t1 $a0\n");
+                            //k=lookup($1);
+                            k=var_indx($1);
+                            k+=3;
+                            fprintf(temp,"sw $a0 %d($t0)\n",4*k );
+                                    
+                        }else if(strcmp($4,"*")==0){
+                            //int k=lookup($3);
+                            int k=var_indx($3);
+                            k+=3;
+                            if(k<=2)
+                            {
+                                fprintf(temp,"li $a0 %s\n",$3);
+                            }
+                            else
+                            {
+                                fprintf(temp,"lw $a0 %d($t0)\n",4*k );
+                            }
+
+                            //pushing into stack first arg
+                            fprintf(temp,"sw $a0 0($sp)\n");
+                            fprintf(temp,"addiu $sp $sp -4\n");
+
+
+                            //k=lookup($5);
+                            k=var_indx($5);
+                            k+=3;
+                            if(k<=2)
+                            {
+                                fprintf(temp,"li $a0 %s\n",$5);
+                            }
+                            else
+                            {
+                                fprintf(temp,"lw $a0 %d($t0)\n",4*k );
+                            }
+                            fprintf(temp,"lw $t1 4($sp)\n");
+                            fprintf(temp,"addiu $sp $sp 4\n");
+                            fprintf(temp,"mul $a0 $a0 $t1\n");
+                            //k=lookup($1);
+                            k=var_indx($1);
+                            k+=3;
+                            fprintf(temp,"sw $a0 %d($t0)\n",4*k );
+                                    
+                        }else if(strcmp($4,"/")==0){
+                            //int k=lookup($3);
+                            int k=var_indx($3);
+                            k+=3;
+                            if(k<=2)
+                            {
+                                fprintf(temp,"li $a0 %s\n",$3);
+                            }
+                            else
+                            {
+                                fprintf(temp,"lw $a0 %d($t0)\n",4*k );
+                            }
+
+                            //pushing into stack first arg
+                            fprintf(temp,"sw $a0 0($sp)\n");
+                            fprintf(temp,"addiu $sp $sp -4\n");
+
+
+                            //k=lookup($5);
+                            k=var_indx($5);
+                            k+=3;
+                            if(k<=2)
+                            {
+                                fprintf(temp,"li $a0 %s\n",$5);
+                            }
+                            else
+                            {
+                                fprintf(temp,"lw $a0 %d($t0)\n",4*k );
+                            }
+                            fprintf(temp,"lw $t1 4($sp)\n");
+                            fprintf(temp,"addiu $sp $sp 4\n");
+                            fprintf(temp,"div $a0 $a0 $t1\n");
+                            //k=lookup($1);
+                            k=var_indx($1);
+                            k+=3;
+                            fprintf(temp,"sw $a0 %d($t0)\n",4*k );
+                                    
+                        }else if(strcmp($4,"<")==0){
+                            
+                            //int k=lookup($3);
+                            int k=var_indx($3);
+                            k+=3;
+                            if(k<=2)
+                            {
+                                fprintf(temp,"li $a0 %s\n",$3);
+                            }
+                            else
+                            {
+                                fprintf(temp,"lw $a0 %d($t0)\n",4*k );
+                            }
+
+                            //pushing into stack first arg
+                            fprintf(temp,"sw $a0 0($sp)\n");
+                            fprintf(temp,"addiu $sp $sp -4\n");
+
+
+                            //k=lookup($5);
+                            k=var_indx($5);
+                            k+=3;
+                            if(k<=2)
+                            {
+                                fprintf(temp,"li $a0 %s\n",$5);
+                            }
+                            else
+                            {
+                                fprintf(temp,"lw $a0 %d($t0)\n",4*k );
+                            }
+                            fprintf(temp,"lw $t1 4($sp)\n");
+                            fprintf(temp,"addiu $sp $sp 4\n");
+                            fprintf(temp,"sub $a0 $a0 $t1\n");
+
+                            string l1 = genLabel();
+                            string l2 = genLabel();
+
+                            cout<<"l1 "<<l1<<endl;
+                            cout<<"l2 "<<l2<<endl;
+
+                            fprintf(temp, "bgtz $a0 %s\n", l1.c_str() );
+                            fprintf(temp, "li $a0 0\n" );
+                            fprintf(temp, "b %s\n",l2.c_str() );
+                            fprintf(temp, "%s:",l1.c_str() );
+                            fprintf(temp, "li $a0 1\n" );
+                            fprintf(temp, "%s:",l2.c_str() );
+                            //k=lookup($1);
+                            k=var_indx($1);
+                            k+=3;
+                            fprintf(temp,"sw $a0 %d($t0)\n",4*k );
+                                    
+                        }else if(strcmp($4,">")==0){
+                            
+                            //int k=lookup($3);
+                            int k=var_indx($3);
+                            k+=3;
+                            if(k<=2)
+                            {
+                                fprintf(temp,"li $a0 %s\n",$3);
+                            }
+                            else
+                            {
+                                fprintf(temp,"lw $a0 %d($t0)\n",4*k );
+                            }
+
+                            //pushing into stack first arg
+                            fprintf(temp,"sw $a0 0($sp)\n");
+                            fprintf(temp,"addiu $sp $sp -4\n");
+
+
+                            //k=lookup($5);
+                            k=var_indx($5);
+                            k+=3;
+                            if(k<=2)
+                            {
+                                fprintf(temp,"li $a0 %s\n",$5);
+                            }
+                            else
+                            {
+                                fprintf(temp,"lw $a0 %d($t0)\n",4*k );
+                            }
+                            fprintf(temp,"lw $t1 4($sp)\n");
+                            fprintf(temp,"addiu $sp $sp 4\n");
+                            fprintf(temp,"sub $a0 $t1 $a0\n");
+
+                            string l1 = genLabel();
+                            string l2 = genLabel();
+
+                            cout<<"l1 "<<l1<<endl;
+                            cout<<"l2 "<<l2<<endl;
+
+                            fprintf(temp, "bgtz $a0 %s\n", l1.c_str() );
+                            fprintf(temp, "li $a0 0\n" );
+                            fprintf(temp, "b %s\n",l2.c_str() );
+                            fprintf(temp, "%s:",l1.c_str() );
+                            fprintf(temp, "li $a0 1\n" );
+                            fprintf(temp, "%s:",l2.c_str() );
+                            //k=lookup($1);
+                            k=var_indx($1);
+                            k+=3;
+                            fprintf(temp,"sw $a0 %d($t0)\n",4*k );
+                                    
+                        }else if(strcmp($4,"==")==0){
+                            
+                            //int k=lookup($3);
+                            int k=var_indx($3);
+                            k+=3;
+                            if(k<=2)
+                            {
+                                fprintf(temp,"li $a0 %s\n",$3);
+                            }
+                            else
+                            {
+                                fprintf(temp,"lw $a0 %d($t0)\n",4*k );
+                            }
+
+                            //pushing into stack first arg
+                            fprintf(temp,"sw $a0 0($sp)\n");
+                            fprintf(temp,"addiu $sp $sp -4\n");
+
+
+                            //k=lookup($5);
+                            k=var_indx($5);
+                            k+=3;
+                            if(k<=2)
+                            {
+                                fprintf(temp,"li $a0 %s\n",$5);
+                            }
+                            else
+                            {
+                                fprintf(temp,"lw $a0 %d($t0)\n",4*k );
+                            }
+                            fprintf(temp,"lw $t1 4($sp)\n");
+                            fprintf(temp,"addiu $sp $sp 4\n");
+                            
+
+                            string l1 = genLabel();
+                            string l2 = genLabel();
+
+                            cout<<"l1 "<<l1<<endl;
+                            cout<<"l2 "<<l2<<endl;
+
+                            fprintf(temp, "beq $a0 $t1 %s\n", l1.c_str() );
+                            fprintf(temp, "li $a0 0\n" );
+                            fprintf(temp, "b %s\n",l2.c_str() );
+                            fprintf(temp, "%s:",l1.c_str() );
+                            fprintf(temp, "li $a0 1\n" );
+                            fprintf(temp, "%s:",l2.c_str() );
+                            //k=lookup($1);
+                            k=var_indx($1);
+                            k+=3;
+                            fprintf(temp,"sw $a0 %d($t0)\n",4*k );
+                                    
+                        }
+                    }
+                    ;
+            
+identifiernum : identifier {$$ = $1;}
+                | num {$$ = $1;}
+                ;
+
+binary_ops: BINARY_OPERATORS { $$ = strdup(yytext); }   
+
+identifier: ID { $$ = strdup(yytext); }
+
+num:        NUM {$$ = strdup(yytext);}
+
+label : LABEL {
+    cout << "3\n";
+    $$ = strdup(yytext);
+    cout << "4\n";
+    }
+    ;
+
+unary:      identifier EQ UNARY_OPS identifier {}
+
+copy:       identifier EQ identifier {
+                                        //int k = lookup($3);
+                                        int k=var_indx($3);
+                                        k+=3;
+                                        if(k>2){
+                                            fprintf(temp,"lw $a0 %d($t0)\n",4*k);
+                                        }
+                                        k=var_indx($1);
+                                        k+=3;
+                                        //k = lookup($1);
+                                        if(k>2){
+                                            fprintf(temp,"sw $a0 %d($t0)\n",4*k);
+                                        }
+                                    }
+            | identifier EQ num     {
+                                        //int k = lookup($1);
+                                        int k=var_indx($1);
+                                        k+=3;
+                                        if(k>2){
+                                            fprintf(temp,"li $a0 %s\n",$3);
+                                            fprintf(temp,"sw $a0 %d($t0)\n",4*k);
+                                        }
+                                    }
+label1: label
+        {
+            fprintf(temp,"%s\n",$1);
+        }
+        ;
+conditional_jump : IF identifier GOTO label
+                     {
+                        //remove : from label:
+                        int l=strlen($4);
+                        $4[l-1]=0;
+
+                        cout<<"yes1"<<endl;
+                        //int k=lookup($2);
+                        int k=var_indx($2);
+                        k+=3;
+                        fprintf(temp,"lw $a0 %d($t0)\n",4*k);
+                        fprintf(temp,"li $t1 0\n");
+                        fprintf(temp,"bne $a0 $t1 %s\n",$4);
+                                            
+                     }
+                   | IF num GOTO label 
+                     {
+                        //remove : from label:
+                        int l=strlen($4);
+                        $4[l-1]=0;
+                        cout<<"yes2"<<endl;
+                        fprintf(temp,"li $a0 %s\n",$1);
+                        fprintf(temp,"li $t1 0\n");
+                        fprintf(temp,"bne $a0 $t1 %s\n",$4);
+                     }
+                     ;
+
+unconditional_jump : GOTO label
+                     {
+                        //remove : from label:
+                        
+                        int l=strlen($2);
+                        $2[l-1]=0;
+                        cout<<"yes3"<<endl;
+                        fprintf(temp,"b %s\n",$2);
+                     }
+                     ;
+
+/*parameters : PUSH identifier 
+            | PUSH num {cout<<"yes6"<<endl;}*/
+
+//function_call : CALL LABEL COMMA num {cout<<"yes7"<<endl;}
+function_call: CALL identifier {
+                                fprintf(temp,"jal %s\n",$2);
+                                fprintf(temp,"lw $t0 4($sp)\n");
+                                cout<<"jal "<< $2 <<endl;
+                                }
+              ;
+
+pushargs:   PUSHARGS identifier     {
+                int k=var_indx($2);
+                k+=3;
+                fprintf(temp,"lw $a0 %d($t0)\n",4*k);
+                fprintf(temp,"addiu $sp $sp -4\n");
+                fprintf(temp,"sw $a0 0($sp)\n");
+            }
+            | PUSHARGS num  {
+                fprintf(temp,"li $a0 %s\n",$2);
+                fprintf(temp,"addiu $sp $sp -4\n");
+                fprintf(temp,"sw $a0 0($sp)\n");
+            }
+            ;
+
+
+indexed_copy :  identifier EQ identifier LEFTSQPAR num RIGSQPAR 
+                | identifier EQ identifier LEFTSQPAR identifier RIGSQPAR {cout<<"yes8"<<endl;}
+
+address_pointer_assignment :    STAR identifier EQ identifier 
+                                | identifier EQ STAR identifier | identifier EQ ANDP identifier |ANDP identifier EQ identifier | STAR identifier EQ num
+                                {cout<<"yes9"<<endl;}
+%%
+/*int lookup(char * a)
+{
+    string x(a);
+    if(varmap.find(x)!=varmap.end())return varmap[x];
+    else return -1;
+}*/
+
+int var_indx(char *a)
+{
+    string x(a);
+    string fun=cur_function.back();
+    vit = varmap_func.find(fun);
+    if(vit!=varmap_func.end()){
+        pit=(vit->second).find(x);
+        if(pit!=(vit->second).end()){
+            return ((local_num-1) - pit->second);
+        }else{
+            return -1;
+        }
+    }
+    return -1;
+}
+
+string genLabel(){
+    string l = "_lb";
+    stringstream ss;
+    ss<<labelcount;
+    labelcount++;
+    cout<<labelcount<<endl;
+    
+    return l+ss.str();
+}
+string genres_str(){
+    string l = "res_str";
+    stringstream ss;
+    ss<<res_str_count;
+    res_str_count++;
+    //cout<<labelcount<<endl;
+    
+    return l+ss.str();
+}
+int main (void) {
+    //printf("yes\n");
+    char a[1000];
+    //temp=fopen("mid.txt","r");
+    int k=1;
+
+    ifstream in;
+    size_t found;
+    in.open("../tmpvar.txt");
+    string line;
+    string cur_func="";
+    while(getline(in, line)){
+        found = line.find(":");
+        if(found!=string::npos){
+            string label = line.substr(0, found);
+            string numstr = line.substr(found+1);
+            int num = atoi(numstr.c_str());
+            cur_func=label;
+            paranum.insert(pair<string, int>(cur_func, num));
+            map<string, int>tmp;
+            varmap_func.insert(pair<string, map< string, int > >(cur_func, tmp));
+        }else{
+            found = line.find("=");
+            if(found!=string::npos){
+                string variable = line.substr(0, found);
+                string indxstr = line.substr(found+1);
+                int idx = atoi(indxstr.c_str());
+                map<string, map< string, int > >::iterator it;
+                it = varmap_func.find(cur_func);
+                if(it!=varmap_func.end()){
+                    (it->second).insert(pair<string, int>(variable, idx));
+                }
+            }
+        }
+    }
+
+    /*while(fscanf(temp,"%s",a)!=EOF)
+    {
+        string b(a);
+        //cout<<a<<endl;
+        //fscanf(temp,"%d",&k);
+        if(varmap.find(b)==varmap.end()){varmap[b]=k++;}
+    }*/
+    //fclose(temp);
+    //printf("yes\n");
+    temp=fopen("out.s","w");
+    fprintf(temp,".text\n");
+    /*fprintf(temp,"main:\n");
+    fprintf(temp,"move $t0 $sp\n");
+    fprintf(temp,"addiu $sp $sp %d\n",-4*k );*/
+    cur_function.push_back("global");
+    yyparse ();
+    //fprintf(temp,"jr $ra\n" );
+    fclose(temp);
+    return 0;
+}
+
+
+int yyerror (char *s) {fprintf (stderr, "error at %s\n", yytext);}

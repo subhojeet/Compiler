@@ -1,0 +1,13 @@
+r1 = a1 == 2
+if r1 goto label1:
+goto label2:
+label1:
+a2 = 5
+r3 = a2 + 5
+a2 = r3
+goto label3:
+label2:
+r5 = 4 + 5
+a2 = r5
+label3:
+
